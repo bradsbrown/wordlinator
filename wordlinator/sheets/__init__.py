@@ -4,34 +4,33 @@ import googleapiclient.discovery
 import rich
 import rich.table
 
-WORDLEGOLF_SPREADSHEET_ID = "1POoklzvD643pvdMAleFxrecN50IMv2NdQBs9h43Hw8E"
-WORDLEGOLF_RANGE_NAME = "Round 1!A2:A100"
+SPREADSHEET_ID = "1POoklzvD643pvdMAleFxrecN50IMv2NdQBs9h43Hw8E"
+SHEET_NAME = "Round 1"
+USER_RANGE = "A2:A1000"
 
 
-def _get_sheets_client():
-    return googleapiclient.discovery.build(
-        "sheets", "v4", developerKey=os.getenv("SHEET_API_KEY")
-    )
+class SheetsClient:
+    def __init__(
+        self, sheet_id=SPREADSHEET_ID, sheet_name=SHEET_NAME, user_range=USER_RANGE
+    ):
+        creds = {"developerKey": os.getenv("SHEET_API_KEY")}
+        self.client = googleapiclient.discovery.build("sheets", "v4", **creds)
+        self.sheet_id = sheet_id
+        self.sheet_name = sheet_name
+        self.user_range = user_range
 
+    def _get_sheet_values(self, range):
+        sheets = self.client.spreadsheets()
+        result = sheets.values().get(spreadsheetId=self.sheet_id, range=range).execute()
+        return result.get("values", [])
 
-def _get_sheet_values(client, range):
-    sheet = client.spreadsheets()
-    result = (
-        sheet.values()
-        .get(spreadsheetId=WORDLEGOLF_SPREADSHEET_ID, range=range)
-        .execute()
-    )
-    return result.get("values", [])
-
-
-def get_wordlegolf_users():
-    client = _get_sheets_client()
-    res = _get_sheet_values(client, WORDLEGOLF_RANGE_NAME)
-    return [row[0] for row in res]
+    def get_users(self):
+        rows = self._get_sheet_values(f"{self.sheet_name}!{self.user_range}")
+        return list(filter(None, [row[0] for row in rows]))
 
 
 def main():
-    users = get_wordlegolf_users()
+    users = SheetsClient().get_users()
     table = rich.table.Table("Username", title="WordleGolf Players")
     for user in users:
         table.add_row(user)

@@ -5,13 +5,26 @@ import enum
 import os
 import re
 
+import authlib.integrations.httpx_client
 import dateutil.parser
 import httpx
 import rich
 
 BASE_URL = "https://api.twitter.com/2"
-WORDLE_RE = re.compile(r"Wordle (?P<number>\d+) (?P<score>[X\d])/6")
+WORDLE_RE = re.compile(r"Wordle(\w+)? (?P<number>\d+) (?P<score>[X\d])/6")
 TOKEN = os.getenv("TWITTER_TOKEN")
+
+
+def _get_oauth_creds():
+    creds = {
+        "client_id": os.getenv("TWITTER_API_KEY"),
+        "client_secret": os.getenv("TWITTER_API_KEY_SECRET"),
+        "token": os.getenv("TWITTER_USER_TOKEN"),
+        "token_secret": os.getenv("TWITTER_USER_TOKEN_SECRET"),
+    }
+    if not all(creds.values()):
+        return None
+    return creds
 
 
 @dataclasses.dataclass
@@ -76,8 +89,13 @@ class TwitterClient(httpx.AsyncClient):
     SEARCH_PATH = "tweets/search/recent"
 
     def __init__(self, **kwargs):
+        oauth_creds = _get_oauth_creds()
+        if oauth_creds:
+            auth = authlib.integrations.httpx_client.OAuth1Auth(**oauth_creds)
+            kwargs["auth"] = auth
         super().__init__(base_url=BASE_URL, **kwargs)
-        self.headers["Authorization"] = f"Bearer {TOKEN}"
+        if not oauth_creds:
+            self.headers["Authorization"] = f"Bearer {TOKEN}"
 
     async def search_tweets(self, search_str):
         return await self.get(
@@ -102,7 +120,7 @@ class TwitterClient(httpx.AsyncClient):
 
     async def get_user_wordles(self, username):
         return self._build_wordle_tweets(
-            await self.search_tweets(f"from:{username} wordle")
+            await self.search_tweets(f"from:{username} (wordle OR #WordleGolf)")
         )
 
     async def get_wordlegolf_tweets(self):

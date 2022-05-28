@@ -1,3 +1,4 @@
+import argparse
 import asyncio
 import datetime
 
@@ -7,12 +8,12 @@ import rich.table
 import wordlinator.sheets
 import wordlinator.twitter
 
-WORDLE_DAY_ONE = datetime.date(2021, 6, 20)
-WORDLE_TODAY_NUMBER = (datetime.date.today() - WORDLE_DAY_ONE).days
+WORDLE_DAY_ZERO = datetime.date(2021, 6, 19)
+WORDLE_TODAY_NUMBER = (datetime.date.today() - WORDLE_DAY_ZERO).days
 
 
 async def get_scores(wordle_day=WORDLE_TODAY_NUMBER):
-    users = wordlinator.sheets.get_wordlegolf_users()
+    users = wordlinator.sheets.SheetsClient().get_users()
 
     twitter_client = wordlinator.twitter.TwitterClient()
 
@@ -26,8 +27,7 @@ async def get_scores(wordle_day=WORDLE_TODAY_NUMBER):
     return scores
 
 
-async def main():
-    wordle_day = WORDLE_TODAY_NUMBER  # - 1
+async def main(wordle_day=None):
     scores = await get_scores(wordle_day)
 
     table = rich.table.Table(
@@ -44,11 +44,11 @@ async def main():
             if raw_score < 4:
                 color = "green"
             elif raw_score == 4:
-                color = "white"
+                color = "orange3"
             elif raw_score > 6:
                 color = "red"
             else:
-                color = "blue"
+                color = "yellow"
 
             score_args = [raw_score, score.score, score.score_name]
             args += [f"[{color}]{arg}" for arg in score_args]
@@ -58,8 +58,25 @@ async def main():
     rich.print(table)
 
 
+def _get_day():
+    parser = argparse.ArgumentParser("wordlinator")
+    days = parser.add_mutually_exclusive_group()
+    days.add_argument(
+        "--days-ago", type=int, help="The number of days back to pull a score report."
+    )
+    days.add_argument(
+        "--wordle-day", type=int, help="The wordle day number for the score report."
+    )
+    args = parser.parse_args()
+    wordle_day = args.wordle_day or WORDLE_TODAY_NUMBER
+    if args.days_ago:
+        wordle_day = WORDLE_TODAY_NUMBER - args.days_ago
+    return wordle_day
+
+
 def sync_main():
-    asyncio.run(main())
+    wordle_day = _get_day()
+    asyncio.run(main(wordle_day=wordle_day))
 
 
 if __name__ == "__main__":
