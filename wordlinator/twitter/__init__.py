@@ -10,8 +10,12 @@ import dateutil.parser
 import httpx
 import rich
 
+import wordlinator.utils
+
 BASE_URL = "https://api.twitter.com/2"
-WORDLE_RE = re.compile(r"Wordle(\w+)? (?P<number>\d+) (?P<score>[X\d])/6")
+WORDLE_RE = re.compile(
+    r"Wordle(\w+)? (?P<number>\d+) (?P<score>[X\d])/6", re.IGNORECASE
+)
 TOKEN = os.getenv("TWITTER_TOKEN")
 
 
@@ -50,7 +54,7 @@ class WordleTweet:
 
     created_at: datetime.datetime
     text: str
-    wordle_no: int
+    wordle_day: wordlinator.utils.WordleDay
     raw_score: int
     user: TwitterUser
 
@@ -68,7 +72,7 @@ class WordleTweet:
         if not wordle:
             return None
 
-        wordle_no = int(wordle.groupdict()["number"])
+        wordle_no = wordle.groupdict()["number"]
         score = wordle.groupdict()["score"]
         score = int(score) if score.isdigit() else 7
 
@@ -79,7 +83,7 @@ class WordleTweet:
         return cls(
             created_at=created,
             text=tweet["text"],
-            wordle_no=wordle_no,
+            wordle_day=wordlinator.utils.WordleDay.from_wordle_no(wordle_no),
             raw_score=score,
             user=twitter_user,
         )

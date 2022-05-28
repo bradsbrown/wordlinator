@@ -1,18 +1,17 @@
 import argparse
 import asyncio
-import datetime
 
 import rich
 import rich.table
 
 import wordlinator.sheets
 import wordlinator.twitter
-
-WORDLE_DAY_ZERO = datetime.date(2021, 6, 19)
-WORDLE_TODAY_NUMBER = (datetime.date.today() - WORDLE_DAY_ZERO).days
+import wordlinator.utils
 
 
-async def get_scores(wordle_day=WORDLE_TODAY_NUMBER):
+async def get_scores(
+    wordle_day: wordlinator.utils.WordleDay = wordlinator.utils.WORDLE_TODAY,
+):
     users = wordlinator.sheets.SheetsClient().get_users()
 
     twitter_client = wordlinator.twitter.TwitterClient()
@@ -21,7 +20,7 @@ async def get_scores(wordle_day=WORDLE_TODAY_NUMBER):
 
     for user in users:
         user_scores = await twitter_client.get_user_wordles(user)
-        day_score = [s for s in user_scores if s.wordle_no == wordle_day]
+        day_score = [s for s in user_scores if s.wordle_day == wordle_day]
         scores[user] = day_score[0] if day_score else None
 
     return scores
@@ -68,9 +67,13 @@ def _get_day():
         "--wordle-day", type=int, help="The wordle day number for the score report."
     )
     args = parser.parse_args()
-    wordle_day = args.wordle_day or WORDLE_TODAY_NUMBER
-    if args.days_ago:
-        wordle_day = WORDLE_TODAY_NUMBER - args.days_ago
+    wordle_day = wordlinator.utils.WORDLE_TODAY
+    if args.wordle_day:
+        wordle_day = wordlinator.utils.WordleDay.from_wordle_no(args.wordle_day)
+    elif args.days_ago:
+        wordle_day = wordlinator.utils.WordleDay.from_wordle_no(
+            wordle_day.wordle_no - args.days_ago
+        )
     return wordle_day
 
 
