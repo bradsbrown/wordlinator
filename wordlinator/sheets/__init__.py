@@ -79,7 +79,7 @@ class SheetsClient:
             )
         return score_data
 
-    def get_scores(self):
+    def get_scores(self, completed_only=True):
         sheets = self.client.spreadsheets()
         result = (
             sheets.values()
@@ -95,7 +95,7 @@ class SheetsClient:
         ranges = result.get("valueRanges", [])
         names = [row[0] for row in ranges[0].get("values", [])]
         scores = ranges[1].get("values", [])
-        return self.score_dict(names, scores)
+        return self.score_dict(names, scores, completed_only=completed_only)
 
     def write_scores(self, score_dict):
         body = {"values": list(score_dict.values())}

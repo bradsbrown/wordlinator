@@ -26,6 +26,21 @@ async def get_scores(
     return scores
 
 
+async def main_update(
+    wordle_day: wordlinator.utils.WordleDay = wordlinator.utils.WORDLE_TODAY,
+):
+    sheets_client = wordlinator.sheets.SheetsClient(wordle_day=wordle_day)
+    sheet_scores = sheets_client.get_scores(completed_only=False)
+
+    today_scores = await get_scores(wordle_day=wordle_day)
+
+    for user, score in today_scores.items():
+        if score and sheet_scores[user][-1] != score:
+            sheet_scores[user][-1] = score
+
+    sheets_client.write_scores(sheet_scores)
+
+
 async def main(wordle_day=None):
     scores = await get_scores(wordle_day)
 
@@ -80,6 +95,11 @@ def _get_day():
 def sync_main():
     wordle_day = _get_day()
     asyncio.run(main(wordle_day=wordle_day))
+
+
+def sync_update():
+    wordle_day = _get_day()
+    asyncio.run(main_update(wordle_day=wordle_day))
 
 
 if __name__ == "__main__":
