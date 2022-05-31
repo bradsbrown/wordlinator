@@ -101,7 +101,13 @@ async def show_missing(
     wordle_day: wordlinator.utils.WordleDay = wordlinator.utils.WORDLE_TODAY,
 ):
     client = wordlinator.sheets.SheetsClient(wordle_day=wordle_day)
-    rich.print(client.get_missing_names())
+
+    table = rich.table.Table(
+        "Missing Players", title=f"Missing Wordle Scores Day {wordle_day.wordle_no}"
+    )
+    for name in client.get_missing_names():
+        table.add_row(name)
+    rich.print(table)
 
 
 def _get_day():
