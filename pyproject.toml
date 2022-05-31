@@ -26,6 +26,7 @@ ipython = "^8.4.0"
 wordlinator = "wordlinator.app:sync_main"
 update = "wordlinator.app:sync_update"
 show-user = "wordlinator.app:sync_show_user"
+show-missing = "wordlinator.app:sync_show_missing"
 
 [tool.mypy]
 ignore_missing_imports = true

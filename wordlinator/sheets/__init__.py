@@ -99,6 +99,18 @@ class SheetsClient:
         scores = ranges[1].get("values", [])
         return self.score_dict(names, scores, completed_only=completed_only)
 
+    def get_missing_names(self):
+        if self.game_round is None:
+            raise ValueError(
+                "Cannot check missing names when day is not in a game round."
+            )
+        scores = self.get_scores()
+        missing_scores = []
+        for name, score_list in scores.items():
+            if len(score_list) < self.game_round or not score_list[self.game_round - 1]:
+                missing_scores.append(name)
+        return missing_scores
+
     def write_scores(self, score_dict):
         body = {"values": list(score_dict.values())}
         sheets = self.client.spreadsheets()

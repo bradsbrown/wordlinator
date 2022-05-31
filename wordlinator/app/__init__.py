@@ -12,7 +12,7 @@ import wordlinator.utils
 async def get_scores(
     wordle_day: wordlinator.utils.WordleDay = wordlinator.utils.WORDLE_TODAY,
 ):
-    users = wordlinator.sheets.SheetsClient().get_users()
+    users = wordlinator.sheets.SheetsClient(wordle_day=wordle_day).get_missing_names()
 
     twitter_client = wordlinator.twitter.TwitterClient(wordle_day=wordle_day)
 
@@ -81,6 +81,13 @@ async def show_user(username: str):
     rich.print(scores)
 
 
+async def show_missing(
+    wordle_day: wordlinator.utils.WordleDay = wordlinator.utils.WORDLE_TODAY,
+):
+    client = wordlinator.sheets.SheetsClient(wordle_day=wordle_day)
+    rich.print(client.get_missing_names())
+
+
 def _get_day():
     parser = argparse.ArgumentParser("wordlinator")
     days = parser.add_mutually_exclusive_group()
@@ -116,6 +123,11 @@ def sync_show_user():
     parser.add_argument("username")
     args = parser.parse_args()
     asyncio.run(show_user(args.username))
+
+
+def sync_show_missing():
+    wordle_day = _get_day()
+    asyncio.run(show_missing(wordle_day=wordle_day))
 
 
 if __name__ == "__main__":
