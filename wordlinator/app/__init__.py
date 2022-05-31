@@ -14,7 +14,7 @@ async def get_scores(
 ):
     users = wordlinator.sheets.SheetsClient().get_users()
 
-    twitter_client = wordlinator.twitter.TwitterClient()
+    twitter_client = wordlinator.twitter.TwitterClient(wordle_day=wordle_day)
 
     scores = {}
 
@@ -22,6 +22,7 @@ async def get_scores(
         user_scores = await twitter_client.get_user_wordles(user)
         day_score = [s for s in user_scores if s.wordle_day == wordle_day]
         scores[user] = day_score[0] if day_score else None
+        await asyncio.sleep(1)
 
     return scores
 
@@ -61,6 +62,8 @@ async def main_update(
     sheets_client = wordlinator.sheets.SheetsClient(wordle_day=wordle_day)
 
     today_scores = await get_scores(wordle_day=wordle_day)
+    if not any((s is not None for s in today_scores.values())):
+        raise ValueError("No scores pulled!")
 
     sheets_client.update_scores(today_scores)
 
@@ -68,7 +71,6 @@ async def main_update(
 
 
 async def main(wordle_day=wordlinator.utils.WORDLE_TODAY):
-    rich.print(wordle_day)
     scores = await get_scores(wordle_day)
     print_score_table(wordle_day, scores)
 

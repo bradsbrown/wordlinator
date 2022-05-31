@@ -4,6 +4,7 @@ import datetime
 import enum
 import os
 import re
+import sqlite3
 
 import authlib.integrations.httpx_client
 import dateutil.parser
@@ -72,7 +73,7 @@ class WordleTweet:
         if not wordle:
             return None
 
-        wordle_no = wordle.groupdict()["number"]
+        wordle_no = int(wordle.groupdict()["number"])
         score = wordle.groupdict()["score"]
         score = int(score) if score.isdigit() else 7
 
@@ -89,15 +90,43 @@ class WordleTweet:
         )
 
 
+class UserDb:
+    def __init__(self):
+        self.con = sqlite3.connect("users.db")
+        cur = self.con.cursor()
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS users (username text, user_id text)"""
+        )
+        self.con.commit()
+
+    def get_user(self, username):
+        cur = self.con.cursor()
+        res = list(cur.execute(f"SELECT * from users WHERE username = '{username}'"))
+        return res[0] if res else None
+
+    def add_user(self, username, user_id):
+        cur = self.con.cursor()
+        cur.execute(f"INSERT INTO users VALUES ('{username}', '{user_id}')")
+        self.con.commit()
+
+
 class TwitterClient(httpx.AsyncClient):
     SEARCH_PATH = "tweets/search/recent"
+    USER_PATH = "users/by/username/{username}"
+    TWEETS_PATH = "users/{user_id}/tweets"
 
-    def __init__(self, **kwargs):
+    def __init__(
+        self,
+        wordle_day: wordlinator.utils.WordleDay = wordlinator.utils.WORDLE_TODAY,
+        **kwargs,
+    ):
         oauth_creds = _get_oauth_creds()
         if oauth_creds:
             auth = authlib.integrations.httpx_client.OAuth1Auth(**oauth_creds)
             kwargs["auth"] = auth
         super().__init__(base_url=BASE_URL, **kwargs)
+        self.db = UserDb()
+        self.wordle_day = wordle_day
         if not oauth_creds:
             self.headers["Authorization"] = f"Bearer {TOKEN}"
 
@@ -112,6 +141,58 @@ class TwitterClient(httpx.AsyncClient):
             },
         )
 
+    async def get_user_by(self, username: str):
+        return await self.get(self.USER_PATH.format(username=username))
+
+    async def get_user_id(self, username: str):
+        db_user = self.db.get_user(username)
+        if db_user:
+            return db_user[1]
+        else:
+            twitter_user = await self.get_user_by(username)
+            user_id = None
+            if twitter_user.is_success:
+                user_id = twitter_user.json().get("data", {}).get("id", None)
+            if user_id:
+                self.db.add_user(username, user_id)
+            return user_id
+
+    def _start_timestamp(self):
+        day = self.wordle_day.date - datetime.timedelta(days=1)
+        dt = datetime.datetime(
+            day.year, day.month, day.day, 16, 00, 00, tzinfo=datetime.timezone.utc
+        )
+        return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    async def get_user_recent_tweets(self, user_id: str):
+        return await self.get(
+            self.TWEETS_PATH.format(user_id=user_id),
+            params={
+                "max_results": 100,
+                "expansions": "author_id",
+                "tweet.fields": "created_at",
+                "start_time": self._start_timestamp(),
+            },
+        )
+
+    async def get_user_tweets_by(self, username: str):
+        user_id = await self.get_user_id(username)
+        if not user_id:
+            return None
+        return await self.get_user_recent_tweets(user_id)
+
+    async def get_user_wordles(self, username):
+        user_tweets = await self.get_user_tweets_by(username)
+        if user_tweets and not user_tweets.is_success:
+            rich.print(
+                f"[red]Get tweets failed for {username} -- "
+                f"{user_tweets.status_code}: {user_tweets.text}"
+            )
+        if not user_tweets:
+            rich.print(f"[yellow]No User ID found for {username}")
+            return []
+        return self._build_wordle_tweets(user_tweets)
+
     def _build_wordle_tweets(self, response: httpx.Response):
         res_json = response.json()
         if "data" not in res_json:
@@ -120,11 +201,6 @@ class TwitterClient(httpx.AsyncClient):
         users = res_json["includes"]["users"]
         return list(
             filter(None, map(lambda t: WordleTweet.from_tweet(t, users), tweets))
-        )
-
-    async def get_user_wordles(self, username):
-        return self._build_wordle_tweets(
-            await self.search_tweets(f"from:{username} (wordle OR #WordleGolf)")
         )
 
     async def get_wordlegolf_tweets(self):
