@@ -4,13 +4,13 @@ import datetime
 import enum
 import os
 import re
-import sqlite3
 
 import authlib.integrations.httpx_client
 import dateutil.parser
 import httpx
 import rich
 
+import wordlinator.db
 import wordlinator.utils
 
 BASE_URL = "https://api.twitter.com/2"
@@ -90,26 +90,6 @@ class WordleTweet:
         )
 
 
-class UserDb:
-    def __init__(self):
-        self.con = sqlite3.connect("users.db")
-        cur = self.con.cursor()
-        cur.execute(
-            """CREATE TABLE IF NOT EXISTS users (username text, user_id text)"""
-        )
-        self.con.commit()
-
-    def get_user(self, username):
-        cur = self.con.cursor()
-        res = list(cur.execute(f"SELECT * from users WHERE username = '{username}'"))
-        return res[0] if res else None
-
-    def add_user(self, username, user_id):
-        cur = self.con.cursor()
-        cur.execute(f"INSERT INTO users VALUES ('{username}', '{user_id}')")
-        self.con.commit()
-
-
 class TwitterClient(httpx.AsyncClient):
     SEARCH_PATH = "tweets/search/recent"
     USER_PATH = "users/by/username/{username}"
@@ -125,7 +105,7 @@ class TwitterClient(httpx.AsyncClient):
             auth = authlib.integrations.httpx_client.OAuth1Auth(**oauth_creds)
             kwargs["auth"] = auth
         super().__init__(base_url=BASE_URL, **kwargs)
-        self.db = UserDb()
+        self.db = wordlinator.db.WordleDb()
         self.wordle_day = wordle_day
         if not oauth_creds:
             self.headers["Authorization"] = f"Bearer {TOKEN}"
@@ -145,9 +125,9 @@ class TwitterClient(httpx.AsyncClient):
         return await self.get(self.USER_PATH.format(username=username))
 
     async def get_user_id(self, username: str):
-        db_user = self.db.get_user(username)
-        if db_user:
-            return db_user[1]
+        db_user_id = self.db.get_user_id(username)
+        if db_user_id:
+            return db_user_id
         else:
             twitter_user = await self.get_user_by(username)
             user_id = None

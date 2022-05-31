@@ -145,6 +145,7 @@ class SheetsClient:
                     current_row[day_idx] = score_val
             current_scores[name] = current_row
         self.write_scores(current_scores)
+        return current_scores
 
 
 def main():

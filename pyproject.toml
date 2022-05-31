@@ -27,6 +27,7 @@ wordlinator = "wordlinator.app:sync_main"
 update = "wordlinator.app:sync_update"
 show-user = "wordlinator.app:sync_show_user"
 show-missing = "wordlinator.app:sync_show_missing"
+db-load = "wordlinator.app:load_db_scores"
 
 [tool.mypy]
 ignore_missing_imports = true

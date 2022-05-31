@@ -4,6 +4,7 @@ import asyncio
 import rich
 import rich.table
 
+import wordlinator.db
 import wordlinator.sheets
 import wordlinator.twitter
 import wordlinator.utils
@@ -56,6 +57,19 @@ def print_score_table(wordle_day, scores):
     rich.print(table)
 
 
+def _save_db_scores(wordle_day: wordlinator.utils.WordleDay, scores: dict):
+    db = wordlinator.db.WordleDb()
+    hole_data = wordle_day.golf_hole
+    if not hole_data:
+        return
+    game_no = hole_data.game_no
+    for user, score_list in scores.items():
+        if not db.get_user(user):
+            continue
+        for day, score_entry in enumerate(score_list, start=1):
+            db.add_score(user, game_no, day, score_entry)
+
+
 async def main_update(
     wordle_day: wordlinator.utils.WordleDay = wordlinator.utils.WORDLE_TODAY,
 ):
@@ -65,7 +79,9 @@ async def main_update(
     if not any((s is not None for s in today_scores.values())):
         raise ValueError("No scores pulled!")
 
-    sheets_client.update_scores(today_scores)
+    updated_scores = sheets_client.update_scores(today_scores)
+
+    _save_db_scores(wordle_day, updated_scores)
 
     print_score_table(wordle_day, today_scores)
 
@@ -106,6 +122,13 @@ def _get_day():
             wordle_day.wordle_no - args.days_ago
         )
     return wordle_day
+
+
+def load_db_scores():
+    wordle_day = _get_day()
+    client = wordlinator.sheets.SheetsClient(wordle_day=wordle_day)
+    scores = client.get_scores()
+    _save_db_scores(wordle_day, scores)
 
 
 def sync_main():
