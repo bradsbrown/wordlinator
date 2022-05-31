@@ -2,6 +2,7 @@ import argparse
 import asyncio
 
 import rich
+import rich.progress
 import rich.table
 
 import wordlinator.db
@@ -19,7 +20,7 @@ async def get_scores(
 
     scores = {}
 
-    for user in users:
+    for user in rich.progress.track(users, description="Checking for user scores.."):
         user_scores = await twitter_client.get_user_wordles(user)
         day_score = [s for s in user_scores if s.wordle_day == wordle_day]
         scores[user] = day_score[0] if day_score else None
@@ -77,7 +78,8 @@ async def main_update(
 
     today_scores = await get_scores(wordle_day=wordle_day)
     if not any((s is not None for s in today_scores.values())):
-        raise ValueError("No scores pulled!")
+        rich.print("[blue]No new scores found!")
+        return
 
     updated_scores = sheets_client.update_scores(today_scores)
 
