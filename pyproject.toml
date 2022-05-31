@@ -25,6 +25,7 @@ ipython = "^8.4.0"
 [tool.poetry.scripts]
 wordlinator = "wordlinator.app:sync_main"
 update = "wordlinator.app:sync_update"
+show-user = "wordlinator.app:sync_show_user"
 
 [tool.mypy]
 ignore_missing_imports = true

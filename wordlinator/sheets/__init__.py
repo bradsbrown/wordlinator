@@ -11,7 +11,7 @@ import rich.table
 import wordlinator.utils
 
 SPREADSHEET_ID = "1POoklzvD643pvdMAleFxrecN50IMv2NdQBs9h43Hw8E"
-SHEET_NAME = os.getenv("SHEET_NAME", "AutoTest")
+SHEET_NAME = os.getenv("SHEET_NAME", None)
 USER_RANGE = "A2:A1000"
 SCORE_RANGE = "C2:T1000"
 
@@ -45,6 +45,8 @@ class SheetsClient:
             self.game_round = None
         else:
             self.game_round = wordle_day.golf_hole.hole_no
+            if not self.sheet_name:
+                self.sheet_name = f"Round {wordle_day.golf_hole.game_no}"
 
     def _get_sheet_values(self, range):
         sheets = self.client.spreadsheets()
@@ -111,6 +113,26 @@ class SheetsClient:
             .execute()
         )
         return result
+
+    def update_scores(self, day_scores_dict):
+        if self.game_round is None:
+            raise ValueError("Cannot update scores if not in a game round")
+        current_scores = self.get_scores()
+        for name, score in day_scores_dict.items():
+            current_row = current_scores[name]
+            row_len = len(current_row)
+            score_val = str(score.raw_score) if score else ""
+            if row_len == (self.game_round - 1):
+                # If the row doesn't include today yet, add it.
+                current_row.append(score_val)
+            elif row_len >= self.game_round:
+                # If there's already an entry for today's game,
+                # only update if the value is empty.
+                day_idx = self.game_round - 1
+                if current_row[day_idx] == "":
+                    current_row[day_idx] = score_val
+            current_scores[name] = current_row
+        self.write_scores(current_scores)
 
 
 def main():

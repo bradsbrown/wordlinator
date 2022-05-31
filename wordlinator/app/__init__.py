@@ -26,30 +26,13 @@ async def get_scores(
     return scores
 
 
-async def main_update(
-    wordle_day: wordlinator.utils.WordleDay = wordlinator.utils.WORDLE_TODAY,
-):
-    sheets_client = wordlinator.sheets.SheetsClient(wordle_day=wordle_day)
-    sheet_scores = sheets_client.get_scores(completed_only=False)
-
-    today_scores = await get_scores(wordle_day=wordle_day)
-
-    for user, score in today_scores.items():
-        if score and sheet_scores[user][-1] != score:
-            sheet_scores[user][-1] = score
-
-    sheets_client.write_scores(sheet_scores)
-
-
-async def main(wordle_day=None):
-    scores = await get_scores(wordle_day)
-
+def print_score_table(wordle_day, scores):
     table = rich.table.Table(
         rich.table.Column(header="Username", style="green"),
         rich.table.Column("Raw Score"),
         rich.table.Column("Golf Score"),
         rich.table.Column("Score Name"),
-        title=f"Wordle Scores Day {wordle_day}",
+        title=f"Wordle Scores Day {wordle_day.wordle_no}",
     )
     for username, score in scores.items():
         args = [username]
@@ -70,6 +53,30 @@ async def main(wordle_day=None):
             args += ["N/A"] * 3
         table.add_row(*args)
     rich.print(table)
+
+
+async def main_update(
+    wordle_day: wordlinator.utils.WordleDay = wordlinator.utils.WORDLE_TODAY,
+):
+    sheets_client = wordlinator.sheets.SheetsClient(wordle_day=wordle_day)
+
+    today_scores = await get_scores(wordle_day=wordle_day)
+
+    sheets_client.update_scores(today_scores)
+
+    print_score_table(wordle_day, today_scores)
+
+
+async def main(wordle_day=wordlinator.utils.WORDLE_TODAY):
+    rich.print(wordle_day)
+    scores = await get_scores(wordle_day)
+    print_score_table(wordle_day, scores)
+
+
+async def show_user(username: str):
+    client = wordlinator.twitter.TwitterClient()
+    scores = await client.get_user_wordles(username)
+    rich.print(scores)
 
 
 def _get_day():
@@ -100,6 +107,13 @@ def sync_main():
 def sync_update():
     wordle_day = _get_day()
     asyncio.run(main_update(wordle_day=wordle_day))
+
+
+def sync_show_user():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("username")
+    args = parser.parse_args()
+    asyncio.run(show_user(args.username))
 
 
 if __name__ == "__main__":
