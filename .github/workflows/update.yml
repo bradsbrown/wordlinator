@@ -2,7 +2,7 @@ name: Update Scores
 on:
   workflow_dispatch:
   schedule:
-    - '0 4,8,10,16,18 * * *'
+    - cron: '0 4,8,10,16,18 * * *'
 env:
   TWITTER_TOKEN: ${{ secrets.TWITTER_TOKEN }}
   TWITTER_API_KEY: ${{ secrets.TWITTER_API_KEY }}
