@@ -29,14 +29,24 @@ async def get_scores(
     return scores
 
 
-def print_score_table(wordle_day, scores):
+def print_missing_names(wordle_day, names):
     table = rich.table.Table(
+        "Missing Players", title=f"Missing Wordle Scores Day {wordle_day.wordle_no}"
+    )
+    for name in names:
+        table.add_row(name)
+    rich.print(table)
+
+
+def print_score_table(wordle_day, scores):
+    score_table = rich.table.Table(
         rich.table.Column(header="Username", style="green"),
         rich.table.Column("Raw Score"),
         rich.table.Column("Golf Score"),
         rich.table.Column("Score Name"),
         title=f"Wordle Scores Day {wordle_day.wordle_no}",
     )
+    scoreless_names = []
     for username, score in scores.items():
         args = [username]
         if score:
@@ -52,10 +62,11 @@ def print_score_table(wordle_day, scores):
 
             score_args = [raw_score, score.score, score.score_name]
             args += [f"[{color}]{arg}" for arg in score_args]
+            score_table.add_row(*args)
         else:
-            args += ["N/A"] * 3
-        table.add_row(*args)
-    rich.print(table)
+            scoreless_names.append(username)
+    rich.print(score_table)
+    print_missing_names(wordle_day, scoreless_names)
 
 
 def _save_db_scores(wordle_day: wordlinator.utils.WordleDay, scores: dict):
@@ -79,11 +90,10 @@ async def main_update(
     today_scores = await get_scores(wordle_day=wordle_day)
     if not any((s is not None for s in today_scores.values())):
         rich.print("[blue]No new scores found!")
-        return
+    else:
+        updated_scores = sheets_client.update_scores(today_scores)
 
-    updated_scores = sheets_client.update_scores(today_scores)
-
-    _save_db_scores(wordle_day, updated_scores)
+        _save_db_scores(wordle_day, updated_scores)
 
     print_score_table(wordle_day, today_scores)
 
@@ -103,13 +113,8 @@ async def show_missing(
     wordle_day: wordlinator.utils.WordleDay = wordlinator.utils.WORDLE_TODAY,
 ):
     client = wordlinator.sheets.SheetsClient(wordle_day=wordle_day)
-
-    table = rich.table.Table(
-        "Missing Players", title=f"Missing Wordle Scores Day {wordle_day.wordle_no}"
-    )
-    for name in client.get_missing_names():
-        table.add_row(name)
-    rich.print(table)
+    missing_names = client.get_missing_names()
+    print_missing_names(wordle_day, missing_names)
 
 
 def _get_day():
