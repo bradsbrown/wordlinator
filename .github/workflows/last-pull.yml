@@ -35,7 +35,7 @@ jobs:
         run: poetry install
 
       - name: Write creds file
-        run: echo ${{ secrets.TWITTER_TOKEN_FILE }} > token.json
+        run: echo "${{ secrets.TWITTER_TOKEN_FILE }}" > token.json
 
       - name: Run Update
         run: poetry run update --days-ago 1
