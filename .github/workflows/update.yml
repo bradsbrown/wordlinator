@@ -10,6 +10,7 @@ env:
   TWITTER_USER_TOKEN: ${{ secrets.TWITTER_USER_TOKEN }}
   TWITTER_USER_TOKEN_SECRET: ${{ secrets.TWITTER_USER_TOKEN_SECRET }}
   SHEET_API_KEY: ${{ secrets.SHEET_API_KEY }}
+  TOKEN_FILE: ${{ secrets.TOKEN_FILE }}
 jobs:
   pull-updates:
     runs-on: ubuntu-latest
@@ -35,7 +36,11 @@ jobs:
         run: poetry install
 
       - name: Write creds file
-        run: echo "${{ secrets.TWITTER_TOKEN_FILE }}" > token.json
+        run: python -c "import os; import pathlib; pathlib.Path('token.json').write_text(os.environ['TOKEN_FILE'])"
 
       - name: Run Update
         run: poetry run update
+
+      - name: Clean Up Token File
+        if: ${{ always() }}
+        run: rm token.json

@@ -35,7 +35,11 @@ jobs:
         run: poetry install
 
       - name: Write creds file
-        run: echo "${{ secrets.TWITTER_TOKEN_FILE }}" > token.json
+        run: python -c "import os; import pathlib; pathlib.Path('token.json').write_text(os.environ['TOKEN_FILE'])"
 
       - name: Run Update
         run: poetry run update --days-ago 1
+
+      - name: Clean Up Token File
+        if: ${{ always() }}
+        run: rm token.json
