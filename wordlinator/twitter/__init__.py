@@ -10,7 +10,7 @@ import dateutil.parser
 import httpx
 import rich
 
-import wordlinator.db
+import wordlinator.db.pg
 import wordlinator.utils
 
 BASE_URL = "https://api.twitter.com/2"
@@ -105,7 +105,7 @@ class TwitterClient(httpx.AsyncClient):
             auth = authlib.integrations.httpx_client.OAuth1Auth(**oauth_creds)
             kwargs["auth"] = auth
         super().__init__(base_url=BASE_URL, **kwargs)
-        self.db = wordlinator.db.WordleDb()
+        self.db = wordlinator.db.pg.WordleDb()
         self.wordle_day = wordle_day
         if not oauth_creds:
             self.headers["Authorization"] = f"Bearer {TOKEN}"

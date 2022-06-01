@@ -5,7 +5,7 @@ import rich
 import rich.progress
 import rich.table
 
-import wordlinator.db
+import wordlinator.db.pg
 import wordlinator.sheets
 import wordlinator.twitter
 import wordlinator.utils
@@ -70,7 +70,7 @@ def print_score_table(wordle_day, scores):
 
 
 def _save_db_scores(wordle_day: wordlinator.utils.WordleDay, scores: dict):
-    db = wordlinator.db.WordleDb()
+    db = wordlinator.db.pg.WordleDb()
     hole_data = wordle_day.golf_hole
     if not hole_data:
         return
