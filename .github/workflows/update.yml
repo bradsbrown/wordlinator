@@ -1,0 +1,41 @@
+name: Update Scores
+on:
+  workflow_dispatch:
+  schedule:
+    - '0 4,8,10,16,18 * * *'
+env:
+  TWITTER_TOKEN: ${{ secrets.TWITTER_TOKEN }}
+  TWITTER_API_KEY: ${{ secrets.TWITTER_API_KEY }}
+  TWITTER_API_KEY_SECRET: ${{ secrets.TWITTER_API_KEY_SECRET }}
+  TWITTER_USER_TOKEN: ${{ secrets.TWITTER_USER_TOKEN }}
+  TWITTER_USER_TOKEN_SECRET: ${{ secrets.TWITTER_USER_TOKEN_SECRET }}
+  SHEET_API_KEY: ${{ secrets.SHEET_API_KEY }}
+jobs:
+  pull-updates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.10
+
+      - name: Install Poetry
+        run: pip install poetry
+
+      - name: Cache Poetry virtualenv
+        uses: actions/cache@v2
+        id: poetry-cache
+        with:
+          path: ~/.cache/pypoetry
+          key: poetry-3.10-${{ hashFiles('poetry.lock', 'pyproject.toml') }}
+          restore-keys: poetry-3.10-
+
+      - name: Install Package
+        run: poetry install
+
+      - name: Write creds file
+        run: echo ${{ secrets.TWITTER_TOKEN_FILE }} > token.json
+
+      - name: Run Update
+        run: poetry run update
