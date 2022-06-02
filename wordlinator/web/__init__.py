@@ -1,4 +1,6 @@
 import collections
+import functools
+import time
 
 import dash
 
@@ -6,6 +8,19 @@ import wordlinator.db.pg as db
 import wordlinator.utils
 
 app = dash.Dash(name="WordleGolf")
+
+
+@functools.lru_cache()
+def _scores_from_db(ttl_hash=None):
+    return db.WordleDb().get_scores(wordlinator.utils.WORDLE_TODAY.golf_hole.game_no)
+
+
+def get_ttl_hash(seconds=600):
+    return round(time.time() / seconds)
+
+
+def scores_from_db():
+    return _scores_from_db(get_ttl_hash())
 
 
 def _golf_score(score_list):
@@ -51,11 +66,18 @@ def _column_formats(col):
             },
             "backgroundColor": "green",
         },
+        {
+            "if": {
+                "column_id": col["id"],
+                "filter_query": _format_string(col, "is nil"),
+            },
+            "backgroundColor": "white",
+        },
     ]
 
 
 def get_scores():
-    score_list = db.WordleDb().get_scores(2)
+    score_list = scores_from_db()
     scores_by_user = collections.defaultdict(list)
     for score in score_list:
         scores_by_user[score.user_id.username].append(score)
@@ -75,17 +97,115 @@ def get_scores():
         *hole_columns,
     ]
 
-    formatting = [
+    color_formatting = [
         format_entry
         for column_formats in [_column_formats(col) for col in hole_columns]
         for format_entry in column_formats
     ]
+    formatting = [
+        {"if": {"column_id": "Name"}, "textAlign": "center"},
+        *color_formatting,
+    ]
     return dash.dash_table.DataTable(
-        table_rows, columns, style_data_conditional=formatting, sort_action="native"
+        table_rows,
+        columns,
+        style_table={"width": "80%", "margin": "auto"},
+        style_cell={"textAlign": "center"},
+        style_data={"width": "10%"},
+        style_as_list_view=True,
+        style_data_conditional=formatting,
+        sort_action="native",
     )
 
 
-app.layout = dash.html.Div(children=[dash.html.H1("#WordleGolf"), get_scores()])
+SCORE_NAME_MAP = {
+    1: "Hole-in-1",
+    2: "Eagle",
+    3: "Birdie",
+    4: "Par",
+    5: "Bogey",
+    6: "Double Bogey",
+    7: "Fail",
+}
+
+
+def _get_score_breakdown(score, holes):
+    score_row = {"Score": SCORE_NAME_MAP[score]}
+    days = sorted(set(holes))
+    for day in days:
+        score_row[day] = holes.count(day)
+    return score_row
+
+
+def _get_summary_rows(score_list):
+    days = list(sorted(set((score.hole_id.hole for score in score_list))))
+    day_dict = {
+        day: [score.score for score in score_list if score.hole_id.hole == day]
+        for day in days
+    }
+    totals = {
+        "Score": "Total",
+        **{day: len(scores) for day, scores in day_dict.items()},
+    }
+
+    averages = {
+        "Score": "Daily Average",
+        **{
+            day: round(sum(scores) / len(scores), 2) for day, scores in day_dict.items()
+        },
+    }
+
+    return [totals, averages]
+
+
+def get_daily_stats():
+    score_list = scores_from_db()
+    scores_by_value = collections.defaultdict(list)
+    for score in score_list:
+        scores_by_value[score.score].append(score.hole_id.hole)
+
+    table_rows = []
+    for score in sorted(scores_by_value.keys()):
+        table_rows.append(_get_score_breakdown(score, scores_by_value[score]))
+
+    table_rows.extend(_get_summary_rows(score_list))
+
+    columns = [
+        {"name": n, "id": n}
+        for n in (
+            "Score",
+            *[
+                f"{i}"
+                for i in range(1, wordlinator.utils.WORDLE_TODAY.golf_hole.hole_no + 1)
+            ],
+        )
+    ]
+    return dash.dash_table.DataTable(
+        table_rows,
+        columns=columns,
+        style_as_list_view=True,
+        style_data_conditional=[
+            {"if": {"filter_query": "{Score} = 'Total'"}, "fontWeight": "bold"},
+            {"if": {"filter_query": "{Score} = 'Daily Average'"}, "fontWeight": "bold"},
+        ],
+        style_table={"width": "80%", "margin": "auto"},
+    )
+
+
+app.layout = dash.html.Div(
+    children=[
+        dash.html.H1("#WordleGolf", style={"textAlign": "center"}),
+        dash.html.Div(
+            [dash.html.H2("User Scores", style={"textAlign": "center"}), get_scores()]
+        ),
+        dash.html.Div(
+            [
+                dash.html.H2("Daily Stats", style={"textAlign": "center"}),
+                get_daily_stats(),
+            ]
+        ),
+    ]
+)
 
 
 server = app.server
