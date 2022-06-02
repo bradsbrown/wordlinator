@@ -104,3 +104,7 @@ class WordleDb:
                 game_id=hole.game_id,
                 hole_id=hole.hole_id,
             )
+
+    def get_scores(self, round_no):
+        round = self.get_or_create_round(round_no)
+        return Score.select().filter(Score.game_id == round.game_id)
