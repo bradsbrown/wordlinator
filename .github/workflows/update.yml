@@ -11,6 +11,9 @@ env:
   TWITTER_USER_TOKEN_SECRET: ${{ secrets.TWITTER_USER_TOKEN_SECRET }}
   SHEET_API_KEY: ${{ secrets.SHEET_API_KEY }}
   TOKEN_FILE: ${{ secrets.TOKEN_FILE }}
+  DB_HOST: ${{ secrets.DB_HOST }}
+  DB_PASS: ${{ secrets.DB_PASS }}
+  DB_PORT: ${{ secrets.DB_PORT }}
 jobs:
   pull-updates:
     runs-on: ubuntu-latest
