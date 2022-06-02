@@ -119,6 +119,14 @@ async def show_missing(
     print_missing_names(wordle_day, missing_names)
 
 
+async def tweet_missing():
+    sheets_client = wordlinator.sheets.SheetsClient()
+    missing_names = sheets_client.get_missing_names()
+
+    twitter_client = wordlinator.twitter.TwitterClient()
+    await twitter_client.notify_missing(missing_names)
+
+
 def _get_day():
     parser = argparse.ArgumentParser("wordlinator")
     days = parser.add_mutually_exclusive_group()
@@ -166,6 +174,10 @@ def sync_show_user():
 def sync_show_missing():
     wordle_day = _get_day()
     asyncio.run(show_missing(wordle_day=wordle_day))
+
+
+def sync_tweet_missing():
+    asyncio.run(tweet_missing())
 
 
 if __name__ == "__main__":

@@ -4,6 +4,8 @@ import datetime
 import enum
 import os
 import re
+import urllib.parse
+import webbrowser
 
 import authlib.integrations.httpx_client
 import dateutil.parser
@@ -94,6 +96,11 @@ class TwitterClient(httpx.AsyncClient):
     SEARCH_PATH = "tweets/search/recent"
     USER_PATH = "users/by/username/{username}"
     TWEETS_PATH = "users/{user_id}/tweets"
+    POST_TWEET_PATH = "tweets"
+
+    TWEET_INTENT_URL = "https://twitter.com/intent/tweet"
+
+    MAX_TWEET_LENGTH = 260
 
     def __init__(
         self,
@@ -188,6 +195,18 @@ class TwitterClient(httpx.AsyncClient):
 
     async def get_wordlegolf_tweets(self):
         return self._build_wordle_tweets(await self.search_tweets("#WordleGolf"))
+
+    def open_tweet(self, msg):
+        param = urllib.parse.urlencode({"text": msg})
+        webbrowser.open(f"{self.TWEET_INTENT_URL}?{param}")
+
+    async def notify_missing(self, names):
+        header = "Still missing a few #WordleGolf Players today!"
+        msg = header
+        while names:
+            while len(msg) < self.MAX_TWEET_LENGTH and names:
+                msg += f" @{names.pop()}"
+            self.open_tweet(msg)
 
 
 async def main():
