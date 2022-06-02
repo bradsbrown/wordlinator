@@ -20,6 +20,7 @@ class User(BaseModel):
     user_id = peewee.AutoField()
     username = peewee.CharField(unique=True)
     twitter_id = peewee.CharField(unique=True)
+    check_twitter = peewee.BooleanField(default=True)
 
     class Meta:
         table_name = "user_tbl"

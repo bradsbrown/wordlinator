@@ -125,9 +125,9 @@ class TwitterClient(httpx.AsyncClient):
         return await self.get(self.USER_PATH.format(username=username))
 
     async def get_user_id(self, username: str):
-        db_user_id = self.db.get_user_id(username)
-        if db_user_id:
-            return db_user_id
+        db_user = self.db.get_user(username)
+        if db_user:
+            return db_user.twitter_id if db_user.check_twitter else False
         else:
             twitter_user = await self.get_user_by(username)
             user_id = None
@@ -158,7 +158,7 @@ class TwitterClient(httpx.AsyncClient):
     async def get_user_tweets_by(self, username: str):
         user_id = await self.get_user_id(username)
         if not user_id:
-            return None
+            return user_id
         return await self.get_user_recent_tweets(user_id)
 
     async def get_user_wordles(self, username):
@@ -169,7 +169,10 @@ class TwitterClient(httpx.AsyncClient):
                 f"{user_tweets.status_code}: {user_tweets.text}"
             )
         if not user_tweets:
-            rich.print(f"[yellow]No User ID found for {username}")
+            if user_tweets is None:
+                rich.print(f"[yellow]No User ID found for {username}")
+            if user_tweets is False:
+                rich.print(f"[blue]Skipping check for {username}")
             return []
         return self._build_wordle_tweets(user_tweets)
 

@@ -91,8 +91,10 @@ async def main_update(
     if not any((s is not None for s in today_scores.values())):
         rich.print("[blue]No new scores found!")
     else:
+        rich.print("[green]Updating scores in Sheets...")
         updated_scores = sheets_client.update_scores(today_scores)
 
+        rich.print("[green]Saving scores in db...")
         _save_db_scores(wordle_day, updated_scores)
 
     print_score_table(wordle_day, today_scores)
