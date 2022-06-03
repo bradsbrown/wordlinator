@@ -44,4 +44,11 @@ class WordleDay:
         return self.wordle_no == other.wordle_no
 
 
-WORDLE_TODAY = WordleDay.from_date(datetime.date.today())
+# Designed so that "today" will be the current date in CST
+# Regardless of where the code is run
+today = (
+    datetime.datetime.now(datetime.timezone.utc)
+    .astimezone(datetime.timezone(datetime.timedelta(hours=-5), name="US Central"))
+    .date()
+)
+WORDLE_TODAY = WordleDay.from_date(today)

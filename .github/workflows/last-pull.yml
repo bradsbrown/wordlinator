@@ -2,7 +2,7 @@ name: Last Pull for Yesterday
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 2 * * *'
+    - cron: '0 10 * * *'
 env:
   TWITTER_TOKEN: ${{ secrets.TWITTER_TOKEN }}
   TWITTER_API_KEY: ${{ secrets.TWITTER_API_KEY }}
