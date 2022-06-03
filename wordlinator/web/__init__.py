@@ -5,9 +5,14 @@ import time
 import dash
 import dash.long_callback
 import diskcache
+import plotly.graph_objs
 
 import wordlinator.db.pg as db
 import wordlinator.utils
+
+###################
+# Setup Functions #
+###################
 
 app = dash.Dash(name="WordleGolf")
 
@@ -29,6 +34,11 @@ def _scores_from_db(ttl_hash=None):
 
 def scores_from_db():
     return _scores_from_db(get_ttl_hash())
+
+
+#################
+# Score Helpers #
+#################
 
 
 def _golf_score(score_list):
@@ -126,6 +136,10 @@ def get_scores():
     )
 
 
+#################
+# Stats Helpers #
+#################
+
 SCORE_NAME_MAP = {
     1: "Hole-in-1",
     2: "Eagle",
@@ -166,8 +180,9 @@ def _get_summary_rows(score_list):
     return [totals, averages]
 
 
-def get_daily_stats():
+def _stats_dict():
     score_list = scores_from_db()
+
     scores_by_value = collections.defaultdict(list)
     for score in score_list:
         scores_by_value[score.score].append(score.hole_id.hole)
@@ -177,6 +192,11 @@ def get_daily_stats():
         table_rows.append(_get_score_breakdown(score, scores_by_value[score]))
 
     table_rows.extend(_get_summary_rows(score_list))
+    return table_rows
+
+
+def get_daily_stats():
+    table_rows = _stats_dict()
 
     columns = [
         {"name": n, "id": n}
@@ -200,6 +220,55 @@ def get_daily_stats():
     )
 
 
+#################
+# Graph Helpers #
+#################
+
+
+SCORE_COLOR_DICT = {
+    "Hole-in-1": "black",
+    "Eagle": "darkgreen",
+    "Birdie": "lightgreen",
+    "Par": "white",
+    "Bogey": "palevioletred",
+    "Double Bogey": "orangered",
+    "Fail": "darkred",
+}
+
+
+def get_line_graph():
+    rows = _stats_dict()
+    figure = plotly.graph_objs.Figure()
+    total = [r for r in rows if r["Score"] == "Total"][0]
+    rows = [r for r in rows if r["Score"] not in ("Total", "Daily Average")]
+    total.pop("Score")
+    for row in rows:
+        score = row.pop("Score")
+        y_values = []
+        for k in row.keys():
+            row_val = row.get(k)
+            total_val = total.get(k)
+            pct = row_val / total_val * 100
+            y_values.append(pct)
+        figure.add_trace(
+            plotly.graph_objs.Scatter(
+                x=list(row.keys()),
+                y=y_values,
+                fill="tonexty",
+                name=score,
+                line={"color": SCORE_COLOR_DICT[score]},
+                stackgroup="dailies",
+            )
+        )
+    figure.update_xaxes(tickvals=list(total.keys()), title_text="Days")
+    figure.update_yaxes(title_text="Percent")
+    return dash.dcc.Graph(figure=figure)
+
+
+#############
+# App Setup #
+#############
+
 app.layout = dash.html.Div(
     children=[
         dash.html.H1("#WordleGolf", style={"textAlign": "center"}, id="title"),
@@ -207,6 +276,12 @@ app.layout = dash.html.Div(
             [
                 dash.html.H2("User Scores", style={"textAlign": "center"}),
                 dash.html.Div("Loading...", id="user-scores"),
+            ]
+        ),
+        dash.html.Div(
+            [
+                dash.html.H2("Score Graph", style={"textAlign": "center"}),
+                dash.html.Div("Loading...", id="stats-graph"),
             ]
         ),
         dash.html.Div(
@@ -235,6 +310,15 @@ def get_scores_chart(_):
 )
 def get_stats_chart(_):
     return get_daily_stats()
+
+
+@app.long_callback(
+    output=dash.dependencies.Output("stats-graph", "children"),
+    inputs=dash.dependencies.Input("title", "children"),
+    manager=long_callback_manager,
+)
+def get_stats_graph(_):
+    return get_line_graph()
 
 
 server = app.server
