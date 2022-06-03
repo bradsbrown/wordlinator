@@ -14,7 +14,7 @@ import wordlinator.utils
 # Setup Functions #
 ###################
 
-app = dash.Dash(name="WordleGolf")
+app = dash.Dash(name="WordleGolf", title="#WordleGolf")
 
 
 def get_ttl_hash(seconds=600):
