@@ -3,6 +3,8 @@ import functools
 import time
 
 import dash
+import dash.long_callback
+import diskcache
 
 import wordlinator.db.pg as db
 import wordlinator.utils
@@ -10,13 +12,19 @@ import wordlinator.utils
 app = dash.Dash(name="WordleGolf")
 
 
+def get_ttl_hash(seconds=600):
+    return round(time.time() / seconds)
+
+
+cache = diskcache.Cache("./cache")
+long_callback_manager = dash.long_callback.DiskcacheLongCallbackManager(
+    cache, cache_by=get_ttl_hash
+)
+
+
 @functools.lru_cache()
 def _scores_from_db(ttl_hash=None):
     return db.WordleDb().get_scores(wordlinator.utils.WORDLE_TODAY.golf_hole.game_no)
-
-
-def get_ttl_hash(seconds=600):
-    return round(time.time() / seconds)
 
 
 def scores_from_db():
@@ -194,18 +202,39 @@ def get_daily_stats():
 
 app.layout = dash.html.Div(
     children=[
-        dash.html.H1("#WordleGolf", style={"textAlign": "center"}),
+        dash.html.H1("#WordleGolf", style={"textAlign": "center"}, id="title"),
         dash.html.Div(
-            [dash.html.H2("User Scores", style={"textAlign": "center"}), get_scores()]
+            [
+                dash.html.H2("User Scores", style={"textAlign": "center"}),
+                dash.html.Div("Loading...", id="user-scores"),
+            ]
         ),
         dash.html.Div(
             [
                 dash.html.H2("Daily Stats", style={"textAlign": "center"}),
-                get_daily_stats(),
+                dash.html.Div("Loading...", id="daily-stats"),
             ]
         ),
     ]
 )
+
+
+@app.long_callback(
+    output=dash.dependencies.Output("user-scores", "children"),
+    inputs=dash.dependencies.Input("title", "children"),
+    manager=long_callback_manager,
+)
+def get_scores_chart(_):
+    return get_scores()
+
+
+@app.long_callback(
+    output=dash.dependencies.Output("daily-stats", "children"),
+    inputs=dash.dependencies.Input("title", "children"),
+    manager=long_callback_manager,
+)
+def get_stats_chart(_):
+    return get_daily_stats()
 
 
 server = app.server
