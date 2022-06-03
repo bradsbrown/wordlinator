@@ -262,6 +262,7 @@ def get_line_graph():
         )
     figure.update_xaxes(tickvals=list(total.keys()), title_text="Days")
     figure.update_yaxes(title_text="Percent")
+    figure.update_layout(yaxis_range=[0, 100])
     return dash.dcc.Graph(figure=figure)
 
 
