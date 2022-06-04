@@ -13,6 +13,7 @@ env:
   DB_HOST: ${{ secrets.DB_HOST }}
   DB_PASS: ${{ secrets.DB_PASS }}
   DB_PORT: ${{ secrets.DB_PORT }}
+  TOKEN_FILE: ${{ secrets.TOKEN_FILE }}
 jobs:
   pull-updates:
     runs-on: ubuntu-latest
