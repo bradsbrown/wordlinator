@@ -75,11 +75,56 @@ def _save_db_scores(wordle_day: wordlinator.utils.WordleDay, scores: dict):
     if not hole_data:
         return
     game_no = hole_data.game_no
+
+    db_users = db.get_users()
+    db_holes = db.get_holes(game_no)
+    db_scores = db.get_scores(game_no)
+
+    to_update = []
+    to_create = []
+
     for user, score_list in scores.items():
-        if not db.get_user(user):
+        db_user_match = [u for u in db_users if u.username == user]
+        db_user = db_user_match[0] if db_user_match else None
+
+        if not db_user:
             continue
+
         for day, score_entry in enumerate(score_list, start=1):
-            db.add_score(user, game_no, day, score_entry)
+            try:
+                score_entry = int(score_entry)
+            except ValueError:
+                pass
+
+            score_match = [
+                s
+                for s in db_scores
+                if s.user_id.username == user and s.hole_id.hole == day
+            ]
+            db_score = score_match[0] if score_match else None
+
+            if db_score:
+                if db_score.score != score_entry:
+                    db_score.score = score_entry
+                    to_update.append(db_score)
+
+            else:
+                hole = [h for h in db_holes if h.hole == day][0]
+                to_create.append(
+                    {
+                        "score": score_entry,
+                        "user_id": db_user.user_id,
+                        "game_id": hole.game_id.game_id,
+                        "hole_id": hole.hole_id,
+                    }
+                )
+
+    if to_update:
+        db.bulk_update_scores(to_update)
+
+    if to_create:
+        db.bulk_insert_scores(to_create)
+    return
 
 
 async def main_update(

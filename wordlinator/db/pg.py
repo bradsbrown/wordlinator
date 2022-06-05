@@ -1,4 +1,5 @@
 import os
+import typing
 
 import peewee
 
@@ -54,6 +55,9 @@ class WordleDb:
         except peewee.DoesNotExist:
             return None
 
+    def get_users(self):
+        return list(User.select())
+
     def get_user_id(self, username):
         user = self.get_user(username)
         return user.twitter_id if user else None
@@ -74,6 +78,10 @@ class WordleDb:
             return Hole.get(Hole.hole == hole_no, Hole.game_id == round.game_id)
         except peewee.DoesNotExist:
             return Hole.create(hole=hole_no, game_id=round.game_id)
+
+    def get_holes(self, round_no):
+        round = self.get_or_create_round(round_no)
+        return Hole.select().filter(game_id=round.game_id)
 
     def create_round_holes(self, round_no):
         for hole_no in range(1, 19):
@@ -108,3 +116,12 @@ class WordleDb:
     def get_scores(self, round_no):
         round = self.get_or_create_round(round_no)
         return Score.select().filter(Score.game_id == round.game_id)
+
+    def bulk_insert_scores(self, scores: typing.List[typing.Dict]):
+        with db.atomic():
+            for batch in peewee.chunked(scores, 50):
+                Score.insert_many(batch).execute()
+
+    def bulk_update_scores(self, scores: typing.List[Score]):
+        with db.atomic():
+            Score.bulk_update(scores, fields=[Score.score], batch_size=50)
