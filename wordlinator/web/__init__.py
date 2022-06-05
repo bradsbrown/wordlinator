@@ -28,8 +28,18 @@ long_callback_manager = dash.long_callback.DiskcacheLongCallbackManager(
 
 
 @functools.lru_cache()
+def _wordle_today(ttl_hash=None):
+    return wordlinator.utils.get_wordle_today()
+
+
+def wordle_today():
+    return _wordle_today(get_ttl_hash())
+
+
+@functools.lru_cache()
 def _scores_from_db(ttl_hash=None):
-    return db.WordleDb().get_scores(wordlinator.utils.WORDLE_TODAY.golf_hole.game_no)
+    wordle_day = wordle_today()
+    return db.WordleDb().get_scores(wordle_day.golf_hole.game_no)
 
 
 def scores_from_db():
@@ -107,7 +117,7 @@ def get_scores():
 
     hole_columns = [
         {"name": f"Hole {i}", "id": f"Hole {i}", "type": "numeric"}
-        for i in range(1, wordlinator.utils.WORDLE_TODAY.golf_hole.hole_no + 1)
+        for i in range(1, wordle_today().golf_hole.hole_no + 1)
     ]
     columns = [
         {"name": "Name", "id": "Name", "type": "text"},
@@ -202,10 +212,7 @@ def get_daily_stats():
         {"name": n, "id": n}
         for n in (
             "Score",
-            *[
-                f"{i}"
-                for i in range(1, wordlinator.utils.WORDLE_TODAY.golf_hole.hole_no + 1)
-            ],
+            *[f"{i}" for i in range(1, wordle_today().golf_hole.hole_no + 1)],
         )
     ]
     return dash.dash_table.DataTable(

@@ -46,9 +46,13 @@ class WordleDay:
 
 # Designed so that "today" will be the current date in CST
 # Regardless of where the code is run
-today = (
-    datetime.datetime.now(datetime.timezone.utc)
-    .astimezone(datetime.timezone(datetime.timedelta(hours=-5), name="US Central"))
-    .date()
-)
-WORDLE_TODAY = WordleDay.from_date(today)
+def get_wordle_today():
+    today = (
+        datetime.datetime.now(datetime.timezone.utc)
+        .astimezone(datetime.timezone(datetime.timedelta(hours=-5), name="US Central"))
+        .date()
+    )
+    return WordleDay.from_date(today)
+
+
+WORDLE_TODAY = get_wordle_today()
