@@ -94,7 +94,7 @@ def _save_db_scores(wordle_day: wordlinator.utils.WordleDay, scores: dict):
             try:
                 score_entry = int(score_entry)
             except ValueError:
-                pass
+                continue
 
             score_match = [
                 s
