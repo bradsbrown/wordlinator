@@ -81,7 +81,7 @@ class WordleDb:
 
     def get_holes(self, round_no):
         round = self.get_or_create_round(round_no)
-        return Hole.select().filter(game_id=round.game_id)
+        return list(Hole.select().filter(game_id=round.game_id))
 
     def create_round_holes(self, round_no):
         for hole_no in range(1, 19):
@@ -115,7 +115,7 @@ class WordleDb:
 
     def get_scores(self, round_no):
         round = self.get_or_create_round(round_no)
-        return Score.select().filter(Score.game_id == round.game_id)
+        return list(Score.select().filter(Score.game_id == round.game_id))
 
     def bulk_insert_scores(self, scores: typing.List[typing.Dict]):
         with db.atomic():

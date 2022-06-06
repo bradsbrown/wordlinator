@@ -109,7 +109,12 @@ def _save_db_scores(wordle_day: wordlinator.utils.WordleDay, scores: dict):
                     to_update.append(db_score)
 
             else:
-                hole = [h for h in db_holes if h.hole == day][0]
+                hole_match = [h for h in db_holes if h.hole == day]
+                if hole_match:
+                    hole = hole_match[0]
+                else:
+                    hole = db.get_or_create_hole(game_no, day)
+                    db_holes.append(hole)
                 to_create.append(
                     {
                         "score": score_entry,
