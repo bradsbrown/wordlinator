@@ -137,7 +137,14 @@ def get_scores():
     return dash.dash_table.DataTable(
         table_rows,
         columns,
-        style_table={"width": "80%", "margin": "auto"},
+        style_table={
+            "width": "80%",
+            "margin": "auto",
+            "height": "600px",
+            "overflowY": "auto",
+        },
+        fixed_rows={"headers": True, "data": 0},
+        filter_action="native",
         style_cell={"textAlign": "center"},
         style_data={"width": "10%"},
         style_as_list_view=True,
