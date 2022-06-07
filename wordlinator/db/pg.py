@@ -124,4 +124,5 @@ class WordleDb:
 
     def bulk_update_scores(self, scores: typing.List[Score]):
         with db.atomic():
-            Score.bulk_update(scores, fields=[Score.score], batch_size=50)
+            for score in scores:
+                score.save()
