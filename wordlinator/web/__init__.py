@@ -1,4 +1,5 @@
 import collections
+import datetime
 import functools
 import time
 
@@ -29,7 +30,15 @@ long_callback_manager = dash.long_callback.DiskcacheLongCallbackManager(
 
 @functools.lru_cache()
 def _wordle_today(ttl_hash=None):
-    return wordlinator.utils.get_wordle_today()
+    today = wordlinator.utils.get_wordle_today()
+    if today.golf_hole:
+        return today
+    last_completed_round = [
+        dt for dt in wordlinator.utils.WORDLE_GOLF_ROUND_DATES[::-1] if dt <= today.date
+    ]
+    last_round_start = last_completed_round[0]
+    last_round_end = last_round_start + datetime.timedelta(days=17)
+    return wordlinator.utils.WordleDay.from_date(last_round_end)
 
 
 def wordle_today():
