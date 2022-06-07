@@ -126,3 +126,19 @@ class WordleDb:
         with db.atomic():
             for score in scores:
                 score.save()
+
+    def get_users_without_score(self, round_no, hole_no, tweetable=True):
+        hole = self.get_or_create_hole(round_no, hole_no)
+        query_str = """SELECT username
+        FROM user_tbl u
+        WHERE NOT EXISTS (
+            SELECT FROM score WHERE score.user_id = u.user_id AND score.hole_id = {}
+        )""".format(
+            hole.hole_id
+        )
+
+        if tweetable:
+            query_str += " AND u.check_twitter = true"
+
+        res = db.execute_sql(query_str)
+        return [r[0] for r in res]

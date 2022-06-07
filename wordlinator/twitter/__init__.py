@@ -196,17 +196,28 @@ class TwitterClient(httpx.AsyncClient):
     async def get_wordlegolf_tweets(self):
         return self._build_wordle_tweets(await self.search_tweets("#WordleGolf"))
 
-    def open_tweet(self, msg):
+    @classmethod
+    def open_tweet(cls, msg):
         param = urllib.parse.urlencode({"text": msg})
-        webbrowser.open(f"{self.TWEET_INTENT_URL}?{param}")
+        webbrowser.open(f"{cls.TWEET_INTENT_URL}?{param}")
 
-    async def notify_missing(self, names):
+    @classmethod
+    def full_notify_link(cls, names):
         header = "Still missing a few #WordleGolf Players today!"
         msg = header
         while names:
-            while len(msg) < self.MAX_TWEET_LENGTH and names:
+            msg += f" @{names.pop()}"
+        param = urllib.parse.urlencode({"text": msg})
+        return f"{cls.TWEET_INTENT_URL}?{param}"
+
+    @classmethod
+    async def notify_missing(cls, names):
+        header = "Still missing a few #WordleGolf Players today!"
+        msg = header
+        while names:
+            while len(msg) < cls.MAX_TWEET_LENGTH and names:
                 msg += f" @{names.pop()}"
-            self.open_tweet(msg)
+            cls.open_tweet(msg)
 
 
 async def main():

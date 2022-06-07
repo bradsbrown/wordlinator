@@ -6,9 +6,12 @@ import time
 import dash
 import dash.long_callback
 import diskcache
+import flask
+import flask.views
 import plotly.graph_objs
 
 import wordlinator.db.pg as db
+import wordlinator.twitter
 import wordlinator.utils
 
 ###################
@@ -348,8 +351,23 @@ def get_stats_graph(_):
 server = app.server
 
 
+class GetLinkView(flask.views.View):
+    methods = ["GET"]
+
+    def dispatch_request(self):
+        today = wordle_today()
+        missing_users = db.WordleDb().get_users_without_score(
+            today.golf_hole.game_no, today.golf_hole.hole_no
+        )
+        link = wordlinator.twitter.TwitterClient.full_notify_link(missing_users)
+        return flask.redirect(link)
+
+
+server.add_url_rule("/tweet_link", view_func=GetLinkView.as_view("tweet_link"))
+
+
 def serve(debug=True):
-    app.run_server(debug=debug)
+    app.run(debug=debug)
 
 
 if __name__ == "__main__":
