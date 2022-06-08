@@ -129,15 +129,21 @@ class WordleDb:
 
     def get_users_without_score(self, round_no, hole_no, tweetable=True):
         hole = self.get_or_create_hole(round_no, hole_no)
+        # Find users who *have* played in this round,
+        # but have no score on the current hole
         query_str = """SELECT username
         FROM user_tbl u
         WHERE NOT EXISTS (
             SELECT FROM score WHERE score.user_id = u.user_id AND score.hole_id = {}
-        )""".format(
-            hole.hole_id
+        ) AND EXISTS (
+            SELECT FROM score WHERE score.user_id = u.user_id AND score.game_id = {}
+        )
+        """.format(
+            hole.hole_id, hole.game_id
         )
 
         if tweetable:
+            # Restrict to users who post scores on twitter
             query_str += " AND u.check_twitter = true"
 
         res = db.execute_sql(query_str)
