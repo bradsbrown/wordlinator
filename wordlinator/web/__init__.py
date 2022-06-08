@@ -80,7 +80,20 @@ def get_scores():
 
     color_formatting = wordlinator.utils.web.column_formatting(hole_columns)
     formatting = [
-        {"if": {"column_id": "Name"}, "textAlign": "center"},
+        {
+            "if": {"column_id": "Name"},
+            "textAlign": "center",
+            "width": "10%",
+            "maxWidth": "10%",
+            "minWidth": "10%",
+        },
+        {
+            "if": {"column_id": "Score"},
+            "textAlign": "center",
+            "width": "5%",
+            "maxWidth": "5%",
+            "minWidth": "5%",
+        },
         *color_formatting,
     ]
     return dash.dash_table.DataTable(

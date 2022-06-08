@@ -24,8 +24,14 @@ def format_string(col, condition):
     return "{" + col["id"] + "}" + f" {condition}"
 
 
-def column_formats(col):
+def column_formats(col, pct):
     return [
+        {
+            "if": {"column_id": col["id"]},
+            "maxWidth": f"{pct}%",
+            "width": f"{pct}%",
+            "minWidth": f"{pct}%",
+        },
         {
             "if": {
                 "column_id": col["id"],
@@ -69,8 +75,9 @@ def table_rows(score_list):
 
 
 def column_formatting(hole_columns):
+    pct = round((100 - (10 + 5)) / len(hole_columns), 2)
     return [
         entry
-        for format_list in [column_formats(hole) for hole in hole_columns]
+        for format_list in [column_formats(hole, pct) for hole in hole_columns]
         for entry in format_list
     ]
