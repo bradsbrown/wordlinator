@@ -3,6 +3,8 @@ import typing
 
 import peewee
 
+import wordlinator.utils
+
 db = peewee.PostgresqlDatabase(
     os.getenv("DB_NAME", "wordlegolf"),
     user=os.getenv("DB_USER", "wordlegolf"),
@@ -30,6 +32,12 @@ class User(BaseModel):
 class Game(BaseModel):
     game_id = peewee.AutoField()
     game = peewee.IntegerField(null=False)
+    start_date = peewee.DateField(null=False)
+
+
+class Player(BaseModel):
+    user_id = peewee.ForeignKeyField(User, "user_id", null=False)
+    game_id = peewee.ForeignKeyField(Game, "game_id", null=False)
 
 
 class Hole(BaseModel):
@@ -65,11 +73,14 @@ class WordleDb:
     def add_user(self, username, user_id):
         return User.create(username=username, twitter_id=user_id)
 
-    def get_or_create_round(self, round_no):
+    def get_or_create_round(self, round_no, start_date=None):
         try:
             return Game.get(Game.game == round_no)
         except peewee.DoesNotExist:
-            return Game.create(game=round_no)
+            start_date = (
+                start_date or wordlinator.utils.WORDLE_GOLF_ROUND_DATES[round_no - 1]
+            )
+            return Game.create(game=round_no, start_date=start_date)
 
     def get_or_create_hole(self, round_no, hole_no):
         round = self.get_or_create_round(round_no)
@@ -131,15 +142,16 @@ class WordleDb:
         hole = self.get_or_create_hole(round_no, hole_no)
         # Find users who *have* played in this round,
         # but have no score on the current hole
-        query_str = """SELECT username
+        query_str = """SELECT u.username, player.game_id
         FROM user_tbl u
-        WHERE NOT EXISTS (
+        JOIN player ON player.user_id = u.user_id
+        WHERE (
+            player.game_id = {}
+        ) AND NOT EXISTS (
             SELECT FROM score WHERE score.user_id = u.user_id AND score.hole_id = {}
-        ) AND EXISTS (
-            SELECT FROM score WHERE score.user_id = u.user_id AND score.game_id = {}
         )
         """.format(
-            hole.hole_id, hole.game_id
+            hole.game_id, hole.hole_id
         )
 
         if tweetable:

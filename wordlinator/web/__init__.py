@@ -13,6 +13,7 @@ import plotly.graph_objs
 import wordlinator.db.pg as db
 import wordlinator.twitter
 import wordlinator.utils
+import wordlinator.utils.web
 
 ###################
 # Setup Functions #
@@ -63,69 +64,9 @@ def scores_from_db():
 #################
 
 
-def _golf_score(score_list):
-    scores = [s.score for s in score_list]
-    score_count = len(scores)
-    score = sum(scores) - (score_count * 4)
-    return score
-
-
-def _get_user_scorelist(username, scores):
-    scores = list(sorted(scores, key=lambda s: s.hole_id.hole))
-    return {
-        "Name": username,
-        "Score": _golf_score(scores),
-        **{f"Hole {s.hole_id.hole}": s.score for s in scores},
-    }
-
-
-def _format_string(col, condition):
-    return "{" + col["id"] + "}" + f" {condition}"
-
-
-def _column_formats(col):
-    return [
-        {
-            "if": {
-                "column_id": col["id"],
-                "filter_query": _format_string(col, "> 4"),
-            },
-            "backgroundColor": "red",
-        },
-        {
-            "if": {
-                "column_id": col["id"],
-                "filter_query": _format_string(col, "= 4"),
-            },
-            "backgroundColor": "orange",
-        },
-        {
-            "if": {
-                "column_id": col["id"],
-                "filter_query": _format_string(col, "< 4"),
-            },
-            "backgroundColor": "green",
-        },
-        {
-            "if": {
-                "column_id": col["id"],
-                "filter_query": _format_string(col, "is nil"),
-            },
-            "backgroundColor": "white",
-        },
-    ]
-
-
 def get_scores():
     score_list = scores_from_db()
-    scores_by_user = collections.defaultdict(list)
-    for score in score_list:
-        scores_by_user[score.user_id.username].append(score)
-
-    table_rows = [
-        _get_user_scorelist(username, scores)
-        for username, scores in scores_by_user.items()
-    ]
+    table_rows = wordlinator.utils.web.table_rows(score_list)
 
     hole_columns = [
         {"name": f"Hole {i}", "id": f"Hole {i}", "type": "numeric"}
@@ -137,11 +78,7 @@ def get_scores():
         *hole_columns,
     ]
 
-    color_formatting = [
-        format_entry
-        for column_formats in [_column_formats(col) for col in hole_columns]
-        for format_entry in column_formats
-    ]
+    color_formatting = wordlinator.utils.web.column_formatting(hole_columns)
     formatting = [
         {"if": {"column_id": "Name"}, "textAlign": "center"},
         *color_formatting,
