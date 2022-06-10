@@ -126,7 +126,13 @@ class WordleDb:
 
     def get_scores(self, round_no):
         round = self.get_or_create_round(round_no)
-        return list(Score.select().filter(Score.game_id == round.game_id))
+        res = (
+            Score.select(Score, Player.game_id)
+            .join(Player, on=(Score.user_id == Player.user_id))
+            .filter(Player.game_id == round.game_id)
+            .filter(Score.game_id == round.game_id)
+        )
+        return list(res)
 
     def bulk_insert_scores(self, scores: typing.List[typing.Dict]):
         with db.atomic():
