@@ -60,6 +60,7 @@ class WordleTweet:
     wordle_day: wordlinator.utils.WordleDay
     raw_score: int
     user: TwitterUser
+    tweet_id: str
 
     @property
     def score(self):
@@ -86,6 +87,7 @@ class WordleTweet:
         return cls(
             created_at=created,
             text=tweet["text"],
+            tweet_id=tweet["id"],
             wordle_day=wordlinator.utils.WordleDay.from_wordle_no(wordle_no),
             raw_score=score,
             user=twitter_user,
