@@ -51,6 +51,7 @@ class Score(BaseModel):
     user_id = peewee.ForeignKeyField(User, "user_id", null=False)
     game_id = peewee.ForeignKeyField(Game, "game_id", null=False)
     hole_id = peewee.ForeignKeyField(Hole, "hole_id", null=False)
+    tweet_id = peewee.CharField(max_length=255, null=True)
 
     class Meta:
         primary_key = peewee.CompositeKey("user_id", "game_id", "hole_id")
