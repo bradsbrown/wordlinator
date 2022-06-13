@@ -1,5 +1,6 @@
 import datetime
 import functools
+import pathlib
 import time
 
 import dash
@@ -18,7 +19,10 @@ import wordlinator.utils.web
 # Setup Functions #
 ###################
 
-app = dash.Dash(name="WordleGolf", title="#WordleGolf")
+assets_dir = pathlib.Path(__file__).parent / "assets"
+app = dash.Dash(
+    name="WordleGolf", title="#WordleGolf", assets_folder=str(assets_dir.resolve())
+)
 
 
 def get_ttl_hash(seconds=600):

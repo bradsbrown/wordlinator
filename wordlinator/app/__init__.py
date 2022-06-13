@@ -69,7 +69,9 @@ def print_score_table(wordle_day, scores):
     print_missing_names(wordle_day, scoreless_names)
 
 
-def _save_db_scores(wordle_day: wordlinator.utils.WordleDay, scores: dict):
+def _save_db_scores(
+    wordle_day: wordlinator.utils.WordleDay, scores: dict, twitter_scores
+):
     db = wordlinator.db.pg.WordleDb()
     hole_data = wordle_day.golf_hole
     if not hole_data:
@@ -145,7 +147,7 @@ async def main_update(
         updated_scores = sheets_client.update_scores(today_scores)
 
         rich.print("[green]Saving scores in db...")
-        _save_db_scores(wordle_day, updated_scores)
+        _save_db_scores(wordle_day, updated_scores, today_scores)
 
     print_score_table(wordle_day, today_scores)
 
