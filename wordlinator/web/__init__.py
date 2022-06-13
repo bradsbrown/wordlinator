@@ -1,4 +1,3 @@
-import collections
 import datetime
 import functools
 import time
@@ -56,7 +55,7 @@ def _scores_from_db(ttl_hash=None):
 
 
 def scores_from_db():
-    return _scores_from_db(get_ttl_hash())
+    return wordlinator.utils.web.ScoreMatrix(_scores_from_db(get_ttl_hash()))
 
 
 #################
@@ -65,11 +64,11 @@ def scores_from_db():
 
 
 def get_scores():
-    score_list = scores_from_db()
-    table_rows = wordlinator.utils.web.table_rows(score_list)
+    score_matrix = scores_from_db()
+    table_rows = score_matrix.user_rows(wordle_today())
 
     hole_columns = [
-        {"name": f"Hole {i}", "id": f"Hole {i}", "type": "numeric"}
+        {"name": f"{i}", "id": f"{i}", "type": "text", "presentation": "markdown"}
         for i in range(1, wordle_today().golf_hole.hole_no + 1)
     ]
     columns = [
@@ -119,58 +118,27 @@ def get_scores():
 # Stats Helpers #
 #################
 
-SCORE_NAME_MAP = {
-    1: "Hole-in-1",
-    2: "Eagle",
-    3: "Birdie",
-    4: "Par",
-    5: "Bogey",
-    6: "Double Bogey",
-    7: "Fail",
-}
 
+def _get_summary_rows(score_matrix):
+    day_dict = score_matrix.by_hole()
 
-def _get_score_breakdown(score, holes):
-    score_row = {"Score": SCORE_NAME_MAP[score]}
-    days = sorted(set(holes))
-    for day in days:
-        score_row[day] = holes.count(day)
-    return score_row
-
-
-def _get_summary_rows(score_list):
-    days = list(sorted(set((score.hole_id.hole for score in score_list))))
-    day_dict = {
-        day: [score.score for score in score_list if score.hole_id.hole == day]
-        for day in days
-    }
     totals = {
         "Score": "Total",
-        **{day: len(scores) for day, scores in day_dict.items()},
+        **{day: scores.count for day, scores in day_dict.items()},
     }
 
     averages = {
         "Score": "Daily Average",
-        **{
-            day: round(sum(scores) / len(scores), 2) for day, scores in day_dict.items()
-        },
+        **{day: scores.average for day, scores in day_dict.items()},
     }
 
     return [totals, averages]
 
 
 def _stats_dict():
-    score_list = scores_from_db()
-
-    scores_by_value = collections.defaultdict(list)
-    for score in score_list:
-        scores_by_value[score.score].append(score.hole_id.hole)
-
-    table_rows = []
-    for score in sorted(scores_by_value.keys()):
-        table_rows.append(_get_score_breakdown(score, scores_by_value[score]))
-
-    table_rows.extend(_get_summary_rows(score_list))
+    score_matrix = scores_from_db()
+    table_rows = [{"Score": k, **v} for k, v in score_matrix.score_breakdown().items()]
+    table_rows.extend(_get_summary_rows(score_matrix))
     return table_rows
 
 

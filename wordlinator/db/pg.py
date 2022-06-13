@@ -128,8 +128,17 @@ class WordleDb:
     def get_scores(self, round_no):
         round = self.get_or_create_round(round_no)
         res = (
-            Score.select(Score, Player.game_id)
+            Score.select(
+                Score,
+                Hole.hole,
+                User.username,
+                Player.game_id,
+            )
             .join(Player, on=(Score.user_id == Player.user_id))
+            .switch(Score)
+            .join(Hole, on=(Score.hole_id == Hole.hole_id))
+            .switch(Score)
+            .join(User, on=(Score.user_id == User.user_id))
             .filter(Player.game_id == round.game_id)
             .filter(Score.game_id == round.game_id)
         )
