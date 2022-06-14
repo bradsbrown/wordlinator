@@ -9,6 +9,7 @@ import wordlinator.db.pg
 import wordlinator.sheets
 import wordlinator.twitter
 import wordlinator.utils
+import wordlinator.utils.scores
 
 
 async def get_scores(
@@ -70,8 +71,9 @@ def print_score_table(wordle_day, scores):
 
 
 def _save_db_scores(
-    wordle_day: wordlinator.utils.WordleDay, scores: dict, twitter_scores
+    wordle_day: wordlinator.utils.WordleDay, scores: dict, twitter_scores=None
 ):
+    twitter_scores = twitter_scores or {}
     db = wordlinator.db.pg.WordleDb()
     hole_data = wordle_day.golf_hole
     if not hole_data:
@@ -79,52 +81,28 @@ def _save_db_scores(
     game_no = hole_data.game_no
 
     db_users = db.get_users()
-    db_holes = db.get_holes(game_no)
+    db_holes = db.get_holes(game_no, ensure_all=True)
     db_scores = db.get_scores(game_no)
+
+    db_scores_by_user = wordlinator.utils.scores.ScoreMatrix(db_scores).by_user()
 
     to_update = []
     to_create = []
 
     for user, score_list in scores.items():
-        db_user_match = [u for u in db_users if u.username == user]
-        db_user = db_user_match[0] if db_user_match else None
-
-        if not db_user:
+        db_user_scores = db_scores_by_user.get(user)
+        if not db_user_scores:
             continue
-
-        for day, score_entry in enumerate(score_list, start=1):
-            try:
-                score_entry = int(score_entry)
-            except ValueError:
-                continue
-
-            score_match = [
-                s
-                for s in db_scores
-                if s.user_id.username == user and s.hole_id.hole == day
-            ]
-            db_score = score_match[0] if score_match else None
-
-            if db_score:
-                if db_score.score != score_entry:
-                    db_score.score = score_entry
-                    to_update.append(db_score)
-
-            else:
-                hole_match = [h for h in db_holes if h.hole == day]
-                if hole_match:
-                    hole = hole_match[0]
-                else:
-                    hole = db.get_or_create_hole(game_no, day)
-                    db_holes.append(hole)
-                to_create.append(
-                    {
-                        "score": score_entry,
-                        "user_id": db_user.user_id,
-                        "game_id": hole.game_id.game_id,
-                        "hole_id": hole.hole_id,
-                    }
-                )
+        db_user_match = [u for u in db_users if u.username == user]
+        if not db_user_match:
+            continue
+        db_user = db_user_match[0]
+        twitter_score = twitter_scores.get(user, None)
+        changes = db_user_scores.get_changes(
+            score_list, twitter_score, db_user, db_holes
+        )
+        to_update.extend(changes["update"])
+        to_create.extend(changes["create"])
 
     if to_update:
         db.bulk_update_scores(to_update)

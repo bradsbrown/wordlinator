@@ -13,6 +13,7 @@ import plotly.graph_objs
 import wordlinator.db.pg as db
 import wordlinator.twitter
 import wordlinator.utils
+import wordlinator.utils.scores
 import wordlinator.utils.web
 
 ###################
@@ -59,7 +60,7 @@ def _scores_from_db(ttl_hash=None):
 
 
 def scores_from_db():
-    return wordlinator.utils.web.ScoreMatrix(_scores_from_db(get_ttl_hash()))
+    return wordlinator.utils.scores.ScoreMatrix(_scores_from_db(get_ttl_hash()))
 
 
 #################

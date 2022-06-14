@@ -91,8 +91,10 @@ class WordleDb:
         except peewee.DoesNotExist:
             return Hole.create(hole=hole_no, game_id=round.game_id)
 
-    def get_holes(self, round_no):
+    def get_holes(self, round_no, ensure_all=False):
         round = self.get_or_create_round(round_no)
+        if ensure_all:
+            self.create_round_holes(round_no)
         return list(Hole.select().filter(game_id=round.game_id))
 
     def create_round_holes(self, round_no):
