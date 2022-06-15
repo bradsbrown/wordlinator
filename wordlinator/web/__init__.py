@@ -111,6 +111,7 @@ def get_scores():
         },
         fixed_rows={"headers": True, "data": 0},
         filter_action="native",
+        filter_options={"case": "insensitive"},
         style_cell={"textAlign": "center"},
         style_data={"width": "10%"},
         style_as_list_view=True,
