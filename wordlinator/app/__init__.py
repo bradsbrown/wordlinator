@@ -115,6 +115,9 @@ def _save_db_scores(
 async def main_update(
     wordle_day: wordlinator.utils.WordleDay = wordlinator.utils.WORDLE_TODAY,
 ):
+    if not wordle_day.golf_hole:
+        rich.print("[yellow]Today isn't a #WordleGolf day!")
+        exit()
     sheets_client = wordlinator.sheets.SheetsClient(wordle_day=wordle_day)
 
     today_scores = await get_scores(wordle_day=wordle_day)
