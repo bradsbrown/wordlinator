@@ -197,6 +197,62 @@ def load_db_scores():
     _save_db_scores(wordle_day, scores)
 
 
+def _add_user_args():
+    parser = argparse.ArgumentParser("add-user")
+    parser.add_argument("username", help="The user twitter handle or name.")
+    parser.add_argument(
+        "--no-check-twitter",
+        dest="check_twitter",
+        action="store_false",
+        default=True,
+        help="don't check Twitter for user's scores",
+    )
+    parser.add_argument(
+        "-g", "--games", nargs="*", help="The game/round number(s) to enroll the user."
+    )
+    parser.add_argument(
+        "-u",
+        "--unenroll-games",
+        nargs="*",
+        help="Game/round number(s) to unenroll the user.",
+    )
+    args = parser.parse_args()
+    return args
+
+
+async def add_user(args=None):
+    args = args or _add_user_args()
+    db = wordlinator.db.pg.WordleDb()
+
+    user = db.get_user(args.username)
+    if not user:
+        rich.print(f"[green]Creating user {args.username}")
+        user_id = None
+        check_twitter = args.check_twitter
+        if check_twitter:
+            twitter = wordlinator.twitter.TwitterClient()
+            user_id = await twitter.get_user_twitter_id(args.username)
+            if not user_id:
+                check_twitter = False
+                rich.print(
+                    f"[yellow]No twitter ID found for {args.username}, "
+                    "disabling twitter check"
+                )
+        user_id = user_id or f"{args.username}-NA"
+        user = db.add_user(args.username, user_id, check_twitter=check_twitter)
+    for round in args.games or []:
+        rich.print(f"[green]Adding {args.username} to round {round}")
+        db.add_user_to_round(args.username, round)
+    for round in args.unenroll_games or []:
+        rich.print(f"[green]Removing {args.username} from round {round}")
+        db.remove_user_from_round(args.username, round)
+
+
+def sync_add_user():
+    args = _add_user_args()
+    asyncio.run(add_user(args))
+
+
 def sync_main():
     wordle_day = _get_day()
     asyncio.run(main(wordle_day=wordle_day))

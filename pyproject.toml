@@ -36,6 +36,7 @@ show-user = "wordlinator.app:sync_show_user"
 show-missing = "wordlinator.app:sync_show_missing"
 tweet-missing = "wordlinator.app:sync_tweet_missing"
 db-load = "wordlinator.app:load_db_scores"
+add-user = "wordlinator.app:sync_add_user"
 
 [tool.mypy]
 ignore_missing_imports = true

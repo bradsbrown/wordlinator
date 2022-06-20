@@ -133,15 +133,19 @@ class TwitterClient(httpx.AsyncClient):
     async def get_user_by(self, username: str):
         return await self.get(self.USER_PATH.format(username=username))
 
+    async def get_user_twitter_id(self, username: str):
+        user_id = None
+        twitter_user = await self.get_user_by(username)
+        if twitter_user.is_success:
+            user_id = twitter_user.json().get("data", {}).get("id", None)
+        return user_id
+
     async def get_user_id(self, username: str):
         db_user = self.db.get_user(username)
         if db_user:
             return db_user.twitter_id if db_user.check_twitter else False
         else:
-            twitter_user = await self.get_user_by(username)
-            user_id = None
-            if twitter_user.is_success:
-                user_id = twitter_user.json().get("data", {}).get("id", None)
+            user_id = await self.get_user_twitter_id(username)
             if user_id:
                 self.db.add_user(username, user_id)
             return user_id

@@ -85,8 +85,10 @@ class WordleDb:
         user = self.get_user(username)
         return user.twitter_id if user else None
 
-    def add_user(self, username, user_id):
-        return User.create(username=username, twitter_id=user_id)
+    def add_user(self, username, user_id, check_twitter=True):
+        return User.create(
+            username=username, twitter_id=user_id, check_twitter=check_twitter
+        )
 
     def get_rounds(self):
         return list(sorted(Game.select(), key=lambda d: d.start_date))
@@ -117,6 +119,30 @@ class WordleDb:
     def create_round_holes(self, round_no):
         for hole_no in range(1, 19):
             self.get_or_create_hole(round_no, hole_no)
+
+    def get_or_create_player_round(self, user_id, game_id):
+        try:
+            return Player.get(user_id=user_id, game_id=game_id)
+        except peewee.DoesNotExist:
+            return Player.create(user_id=user_id, game_id=game_id)
+
+    def add_user_to_round(self, username, round_no):
+        user = self.get_user(username)
+        if not user:
+            raise ValueError(f"No user found with username {username}")
+        round = self.get_or_create_round(round_no)
+        return self.get_or_create_player_round(user.user_id, round.game_id)
+
+    def remove_user_from_round(self, username, round_no):
+        user = self.get_user(username)
+        if not user:
+            raise ValueError(f"No user found with username {username}")
+        round = self.get_or_create_round(round_no)
+        try:
+            player = Player.get(user_id=user.user_id, game_id=round.game_id)
+            player.delete_instance()
+        except peewee.DoesNotExist:
+            return
 
     def add_score(self, username, game, hole, score):
         if not score:
