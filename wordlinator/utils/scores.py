@@ -153,8 +153,12 @@ class UserRow(ScoreRow):
 
 
 class ScoreMatrix(ScoreContainer):
-    def by_user(self):
-        return self.dict_by("user_id.username", UserRow)
+    def by_user(self, usernames: typing.List[str] = []):
+        res = self.dict_by("user_id.username", UserRow)
+        for username in usernames:
+            if username not in res:
+                res[username] = UserRow([], username)
+        return res
 
     def for_user(self, username):
         user_scores = [s for s in self._scores if s.user_id.username == username]

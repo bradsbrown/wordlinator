@@ -1,3 +1,4 @@
+import argparse
 import dataclasses
 import datetime
 import typing
@@ -5,6 +6,14 @@ import typing
 WORDLE_DAY_ZERO = datetime.date(2021, 6, 19)
 
 WORDLE_GOLF_ROUND_DATES = [datetime.date(2022, 5, 9), datetime.date(2022, 5, 31)]
+
+
+def date_from_string(datestr: str):
+    try:
+        return datetime.date.fromisoformat(datestr)
+    except ValueError:
+        msg = "Invalid date string, expected format: YYYY-mm-DD"
+        raise argparse.ArgumentTypeError(msg)
 
 
 @dataclasses.dataclass

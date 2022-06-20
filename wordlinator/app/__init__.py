@@ -84,7 +84,9 @@ def _save_db_scores(
     db_holes = db.get_holes(game_no, ensure_all=True)
     db_scores = db.get_scores(game_no)
 
-    db_scores_by_user = wordlinator.utils.scores.ScoreMatrix(db_scores).by_user()
+    db_scores_by_user = wordlinator.utils.scores.ScoreMatrix(db_scores).by_user(
+        usernames=list(scores.keys())
+    )
 
     to_update = []
     to_create = []
@@ -95,6 +97,7 @@ def _save_db_scores(
             continue
         db_user_match = [u for u in db_users if u.username == user]
         if not db_user_match:
+            rich.print(f"[yellow]User {user} not in database, cannot add scores.")
             continue
         db_user = db_user_match[0]
         twitter_score = twitter_scores.get(user, None)
@@ -169,6 +172,11 @@ def _get_day():
     days.add_argument(
         "--wordle-day", type=int, help="The wordle day number for the score report."
     )
+    days.add_argument(
+        "--date",
+        type=wordlinator.utils.date_from_string,
+        help="a YYYY-MM-DD format date to pull a score report.",
+    )
     args = parser.parse_args()
     wordle_day = wordlinator.utils.WORDLE_TODAY
     if args.wordle_day:
@@ -177,6 +185,8 @@ def _get_day():
         wordle_day = wordlinator.utils.WordleDay.from_wordle_no(
             wordle_day.wordle_no - args.days_ago
         )
+    elif args.date:
+        wordle_day = wordlinator.utils.WordleDay.from_date(args.date)
     return wordle_day
 
 
