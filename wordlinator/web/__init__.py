@@ -1,5 +1,5 @@
-import datetime
 import functools
+import os
 import pathlib
 import time
 
@@ -16,6 +16,9 @@ import wordlinator.utils
 import wordlinator.utils.scores
 import wordlinator.utils.web
 
+TTL_TIME = 10 if os.getenv("DEBUG") else 600
+LEADERBOARD_COUNT = 20
+
 ###################
 # Setup Functions #
 ###################
@@ -26,7 +29,7 @@ app = dash.Dash(
 )
 
 
-def get_ttl_hash(seconds=600):
+def get_ttl_hash(seconds=TTL_TIME):
     return round(time.time() / seconds)
 
 
@@ -69,6 +72,27 @@ def _scores_from_db(round_id, ttl_hash=None):
 def scores_from_db(round_id):
     return wordlinator.utils.scores.ScoreMatrix(
         _scores_from_db(round_id, get_ttl_hash())
+    )
+
+
+#######################
+# Leaderboard helpers #
+#######################
+
+
+def get_leaderboard(round_id):
+    score_matrix = scores_from_db(round_id)
+    user_scores = score_matrix.by_user()
+    top_20 = dict(
+        list(sorted(user_scores.items(), key=lambda u: u[1].golf_score))[
+            :LEADERBOARD_COUNT
+        ]
+    )
+    return dash.dash_table.DataTable(
+        [{"Name": k, "Score": v.golf_score} for k, v in top_20.items()],
+        style_as_list_view=True,
+        style_table={"width": "40%", "margin": "auto"},
+        style_cell={"textAlign": "center"},
     )
 
 
@@ -239,6 +263,15 @@ app.layout = dash.html.Div(
         ),
         dash.html.Div(
             [
+                dash.html.H2(
+                    f"Leaderboard - Top {LEADERBOARD_COUNT}",
+                    style={"textAlign": "center"},
+                ),
+                dash.html.Div("Loading...", id="leaderboard"),
+            ]
+        ),
+        dash.html.Div(
+            [
                 dash.html.H2("User Scores", style={"textAlign": "center"}),
                 dash.html.Div("Loading...", id="user-scores"),
             ]
@@ -257,6 +290,18 @@ app.layout = dash.html.Div(
         ),
     ]
 )
+
+
+@app.long_callback(
+    output=dash.dependencies.Output("leaderboard", "children"),
+    inputs=[
+        dash.dependencies.Input("title", "children"),
+        dash.dependencies.Input("round-selector-dropdown", "value"),
+    ],
+    manager=long_callback_manager,
+)
+def get_leaderboard_table(_, round_id):
+    return get_leaderboard(round_id)
 
 
 @app.long_callback(
