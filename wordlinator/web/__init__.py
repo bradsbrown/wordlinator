@@ -37,16 +37,24 @@ long_callback_manager = dash.long_callback.DiskcacheLongCallbackManager(
 
 
 @functools.lru_cache()
+def _games_from_db(ttl_hash=None):
+    return db.WordleDb().get_rounds()
+
+
+def games_from_db():
+    return _games_from_db()
+
+
+@functools.lru_cache()
 def _wordle_today(ttl_hash=None):
     today = wordlinator.utils.get_wordle_today()
     if today.golf_hole:
         return today
     last_completed_round = [
-        dt for dt in wordlinator.utils.WORDLE_GOLF_ROUND_DATES[::-1] if dt <= today.date
+        game for game in games_from_db()[::-1] if game.start_date <= today.date
     ]
-    last_round_start = last_completed_round[0]
-    last_round_end = last_round_start + datetime.timedelta(days=17)
-    return wordlinator.utils.WordleDay.from_date(last_round_end)
+    last_round = last_completed_round[0]
+    return wordlinator.utils.WordleDay.from_date(last_round.end_date)
 
 
 def wordle_today():
@@ -54,13 +62,14 @@ def wordle_today():
 
 
 @functools.lru_cache()
-def _scores_from_db(ttl_hash=None):
-    wordle_day = wordle_today()
-    return db.WordleDb().get_scores(wordle_day.golf_hole.game_no)
+def _scores_from_db(round_id, ttl_hash=None):
+    return db.WordleDb().get_scores(round_id=round_id)
 
 
-def scores_from_db():
-    return wordlinator.utils.scores.ScoreMatrix(_scores_from_db(get_ttl_hash()))
+def scores_from_db(round_id):
+    return wordlinator.utils.scores.ScoreMatrix(
+        _scores_from_db(round_id, get_ttl_hash())
+    )
 
 
 #################
@@ -68,8 +77,8 @@ def scores_from_db():
 #################
 
 
-def get_scores():
-    score_matrix = scores_from_db()
+def get_scores(round_id):
+    score_matrix = scores_from_db(round_id)
     table_rows = score_matrix.user_rows(wordle_today())
 
     hole_columns = [
@@ -141,15 +150,15 @@ def _get_summary_rows(score_matrix):
     return [totals, averages]
 
 
-def _stats_dict():
-    score_matrix = scores_from_db()
+def _stats_dict(round_id):
+    score_matrix = scores_from_db(round_id)
     table_rows = [{"Score": k, **v} for k, v in score_matrix.score_breakdown().items()]
     table_rows.extend(_get_summary_rows(score_matrix))
     return table_rows
 
 
-def get_daily_stats():
-    table_rows = _stats_dict()
+def get_daily_stats(round_id):
+    table_rows = _stats_dict(round_id)
 
     columns = [
         {"name": n, "id": n}
@@ -186,8 +195,8 @@ SCORE_COLOR_DICT = {
 }
 
 
-def get_line_graph():
-    rows = _stats_dict()
+def get_line_graph(round_id):
+    rows = _stats_dict(round_id)
     figure = plotly.graph_objs.Figure()
     total = [r for r in rows if r["Score"] == "Total"][0]
     rows = [r for r in rows if r["Score"] not in ("Total", "Daily Average")]
@@ -224,6 +233,11 @@ app.layout = dash.html.Div(
     children=[
         dash.html.H1("#WordleGolf", style={"textAlign": "center"}, id="title"),
         dash.html.Div(
+            wordlinator.utils.web.get_date_dropdown(games_from_db()),
+            id="round-selector",
+            style={"maxWidth": "300px"},
+        ),
+        dash.html.Div(
             [
                 dash.html.H2("User Scores", style={"textAlign": "center"}),
                 dash.html.Div("Loading...", id="user-scores"),
@@ -247,29 +261,38 @@ app.layout = dash.html.Div(
 
 @app.long_callback(
     output=dash.dependencies.Output("user-scores", "children"),
-    inputs=dash.dependencies.Input("title", "children"),
+    inputs=[
+        dash.dependencies.Input("title", "children"),
+        dash.dependencies.Input("round-selector-dropdown", "value"),
+    ],
     manager=long_callback_manager,
 )
-def get_scores_chart(_):
-    return get_scores()
+def get_scores_chart(_, round_id):
+    return get_scores(round_id)
 
 
 @app.long_callback(
     output=dash.dependencies.Output("daily-stats", "children"),
-    inputs=dash.dependencies.Input("title", "children"),
+    inputs=[
+        dash.dependencies.Input("title", "children"),
+        dash.dependencies.Input("round-selector-dropdown", "value"),
+    ],
     manager=long_callback_manager,
 )
-def get_stats_chart(_):
-    return get_daily_stats()
+def get_stats_chart(_, round_id):
+    return get_daily_stats(round_id)
 
 
 @app.long_callback(
     output=dash.dependencies.Output("stats-graph", "children"),
-    inputs=dash.dependencies.Input("title", "children"),
+    inputs=[
+        dash.dependencies.Input("title", "children"),
+        dash.dependencies.Input("round-selector-dropdown", "value"),
+    ],
     manager=long_callback_manager,
 )
-def get_stats_graph(_):
-    return get_line_graph()
+def get_stats_graph(_, round_id):
+    return get_line_graph(round_id)
 
 
 server = app.server

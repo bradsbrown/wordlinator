@@ -1,3 +1,28 @@
+from dash import dcc
+
+###############
+# Date Helper #
+###############
+
+
+def _date_range(game):
+    return f"{game.start_date} to {game.end_date}"
+
+
+def get_date_dropdown(dates):
+    options = [
+        {"label": f"Round {d.game} ({_date_range(d)})", "value": d.game_id}
+        for d in dates
+    ]
+
+    return dcc.Dropdown(
+        id="round-selector-dropdown",
+        options=options,
+        value=dates[-1].game_id,
+        clearable=False,
+    )
+
+
 ######################
 # Formatting Helpers #
 ######################

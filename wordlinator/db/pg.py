@@ -1,3 +1,4 @@
+import datetime
 import os
 import typing
 
@@ -25,6 +26,9 @@ class User(BaseModel):
     twitter_id = peewee.CharField(unique=True)
     check_twitter = peewee.BooleanField(default=True)
 
+    def __repr__(self):
+        return f"<User {self.username}, Check Twitter: {self.check_twitter}>"
+
     class Meta:
         table_name = "user_tbl"
 
@@ -33,6 +37,13 @@ class Game(BaseModel):
     game_id = peewee.AutoField()
     game = peewee.IntegerField(null=False)
     start_date = peewee.DateField(null=False)
+
+    def __repr__(self):
+        return f"<Game: Round {self.game}, Start {self.start_date}>"
+
+    @property
+    def end_date(self):
+        return self.start_date + datetime.timedelta(days=17)
 
 
 class Player(BaseModel):
@@ -44,6 +55,9 @@ class Hole(BaseModel):
     hole_id = peewee.AutoField()
     hole = peewee.IntegerField(null=False)
     game_id = peewee.ForeignKeyField(Game, "game_id", null=False)
+
+    def __repr__(self):
+        return f"<Hole #{self.hole}>"
 
 
 class Score(BaseModel):
@@ -73,6 +87,9 @@ class WordleDb:
 
     def add_user(self, username, user_id):
         return User.create(username=username, twitter_id=user_id)
+
+    def get_rounds(self):
+        return list(sorted(Game.select(), key=lambda d: d.start_date))
 
     def get_or_create_round(self, round_no, start_date=None):
         try:
@@ -127,8 +144,13 @@ class WordleDb:
                 hole_id=hole.hole_id,
             )
 
-    def get_scores(self, round_no):
-        round = self.get_or_create_round(round_no)
+    def get_scores(self, round_no=None, round_id=None):
+        if round_no:
+            round = self.get_or_create_round(round_no)
+        elif round_id:
+            round = Game.get_by_id(round_id)
+        else:
+            raise ValueError("Must provide Round Number or Round ID")
         res = (
             Score.select(
                 Score,
