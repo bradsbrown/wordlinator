@@ -16,7 +16,7 @@ import wordlinator.utils
 import wordlinator.utils.scores
 import wordlinator.utils.web
 
-TTL_TIME = 10 if os.getenv("DEBUG") else 600
+TTL_TIME = 30 if os.getenv("DEBUG") else 600
 LEADERBOARD_COUNT = 20
 
 ###################
@@ -39,7 +39,7 @@ long_callback_manager = dash.long_callback.DiskcacheLongCallbackManager(
 )
 
 
-@functools.lru_cache()
+@functools.lru_cache(maxsize=1)
 def _games_from_db(ttl_hash=None):
     return db.WordleDb().get_rounds()
 
@@ -48,7 +48,7 @@ def games_from_db():
     return _games_from_db()
 
 
-@functools.lru_cache()
+@functools.lru_cache(maxsize=1)
 def _wordle_today(ttl_hash=None):
     today = wordlinator.utils.get_wordle_today()
     if today.golf_hole:
@@ -64,22 +64,17 @@ def wordle_today():
     return _wordle_today(get_ttl_hash())
 
 
-@functools.lru_cache()
+@functools.lru_cache(maxsize=3)
 def _scores_from_db(round_id, ttl_hash=None):
-    return db.WordleDb().get_scores(round_id=round_id)
-
-
-@functools.lru_cache()
-def _players_from_db(round_id, ttl_hash=None):
-    return db.WordleDb().get_users_by_round(round_id=round_id)
+    wordle_db = db.WordleDb()
+    scores = wordle_db.get_scores(round_id=round_id)
+    users = wordle_db.get_users_by_round(round_id=round_id)
+    usernames = [u.username for u in users]
+    return wordlinator.utils.scores.ScoreMatrix(scores, usernames=usernames)
 
 
 def scores_from_db(round_id):
-    users = _players_from_db(round_id)
-    usernames = [u.username for u in users]
-    return wordlinator.utils.scores.ScoreMatrix(
-        _scores_from_db(round_id, get_ttl_hash()), usernames=usernames
-    )
+    return _scores_from_db(round_id)
 
 
 #######################
@@ -276,25 +271,37 @@ app.layout = dash.html.Div(
                     f"Leaderboard - Top {LEADERBOARD_COUNT}",
                     style={"textAlign": "center"},
                 ),
-                dash.html.Div("Loading...", id="leaderboard"),
+                dash.dcc.Loading(
+                    id="leaderboard-loading",
+                    children=dash.html.Div("Loading...", id="leaderboard"),
+                ),
             ]
         ),
         dash.html.Div(
             [
                 dash.html.H2("User Scores", style={"textAlign": "center"}),
-                dash.html.Div("Loading...", id="user-scores"),
+                dash.dcc.Loading(
+                    id="user-scores-loading",
+                    children=dash.html.Div("Loading...", id="user-scores"),
+                ),
             ]
         ),
         dash.html.Div(
             [
                 dash.html.H2("Score Graph", style={"textAlign": "center"}),
-                dash.html.Div("Loading...", id="stats-graph"),
+                dash.dcc.Loading(
+                    id="stats-graph-loading",
+                    children=dash.html.Div("Loading...", id="stats-graph"),
+                ),
             ]
         ),
         dash.html.Div(
             [
                 dash.html.H2("Daily Stats", style={"textAlign": "center"}),
-                dash.html.Div("Loading...", id="daily-stats"),
+                dash.dcc.Loading(
+                    id="daily-stats-loading",
+                    children=dash.html.Div("Loading...", id="daily-stats"),
+                ),
             ]
         ),
     ]
