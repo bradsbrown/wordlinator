@@ -220,32 +220,54 @@ def _add_user_args():
     return args
 
 
-async def add_user(args=None):
-    args = args or _add_user_args()
+async def add_user(username, games=None, unenroll_games=None, check_twitter=True):
     db = wordlinator.db.pg.WordleDb()
 
-    user = db.get_user(args.username)
+    user = db.get_user(username)
     if not user:
-        rich.print(f"[green]Creating user {args.username}")
+        rich.print(f"[green]Creating user {username}")
         user_id = None
-        check_twitter = args.check_twitter
         if check_twitter:
             twitter = wordlinator.twitter.TwitterClient()
-            user_id = await twitter.get_user_twitter_id(args.username)
+            user_id = await twitter.get_user_twitter_id(username)
             if not user_id:
                 check_twitter = False
                 rich.print(
-                    f"[yellow]No twitter ID found for {args.username}, "
+                    f"[yellow]No twitter ID found for {username}, "
                     "disabling twitter check"
                 )
-        user_id = user_id or f"{args.username}-NA"
-        user = db.add_user(args.username, user_id, check_twitter=check_twitter)
-    for round in args.games or []:
-        rich.print(f"[green]Adding {args.username} to round {round}")
-        db.add_user_to_round(args.username, round)
-    for round in args.unenroll_games or []:
-        rich.print(f"[green]Removing {args.username} from round {round}")
-        db.remove_user_from_round(args.username, round)
+        user_id = user_id or f"{username}-NA"
+        user = db.add_user(username, user_id, check_twitter=check_twitter)
+    for round in games or []:
+        rich.print(f"[green]Adding {username} to round {round}")
+        db.add_user_to_round(username, round)
+    for round in unenroll_games or []:
+        rich.print(f"[green]Removing {username} from round {round}")
+        db.remove_user_from_round(username, round)
+
+
+def create_round():
+    parser = argparse.ArgumentParser("create-round")
+    parser.add_argument("round_no", type=int, help="The round number to create.")
+    parser.add_argument(
+        "start_date",
+        type=wordlinator.utils.date_from_string,
+        help="the YYYY-mm-DD format date the round starts.",
+    )
+    args = parser.parse_args()
+
+    db = wordlinator.db.pg.WordleDb()
+    db.get_or_create_round(args.round_no, args.start_date)
+    db.create_round_holes(args.round_no)
+
+
+def copy_users():
+    parser = argparse.ArgumentParser("copy-users")
+    parser.add_argument("from_round", type=int, help="The source round number.")
+    parser.add_argument("to_round", type=int, help="The destination round.")
+    args = parser.parse_args()
+
+    wordlinator.db.pg.WordleDb().copy_players_from_round(args.from_round, args.to_round)
 
 
 def sync_add_user():

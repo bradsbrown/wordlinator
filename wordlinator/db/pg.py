@@ -81,6 +81,15 @@ class WordleDb:
     def get_users(self):
         return list(User.select())
 
+    def get_users_by_round(self, round_no):
+        res = (
+            User.select(User, Player.user_id, Game.game)
+            .join(Player, on=(Player.user_id == User.user_id))
+            .join(Game, on=(Game.game_id == Player.game_id))
+            .filter(Game.game == round_no)
+        )
+        return list(res)
+
     def get_user_id(self, username):
         user = self.get_user(username)
         return user.twitter_id if user else None
@@ -143,6 +152,12 @@ class WordleDb:
             player.delete_instance()
         except peewee.DoesNotExist:
             return
+
+    def copy_players_from_round(self, from_round_no, to_round_no):
+        to_round = self.get_or_create_round(to_round_no)
+
+        for user in self.get_users_by_round(from_round_no):
+            self.get_or_create_player_round(user.user_id, to_round.game_id)
 
     def add_score(self, username, game, hole, score):
         if not score:
