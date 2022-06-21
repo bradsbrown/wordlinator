@@ -50,6 +50,9 @@ class Player(BaseModel):
     user_id = peewee.ForeignKeyField(User, "user_id", null=False)
     game_id = peewee.ForeignKeyField(Game, "game_id", null=False)
 
+    class Meta:
+        primary_key = peewee.CompositeKey("user_id", "game_id")
+
 
 class Hole(BaseModel):
     hole_id = peewee.AutoField()
@@ -81,14 +84,17 @@ class WordleDb:
     def get_users(self):
         return list(User.select())
 
-    def get_users_by_round(self, round_no):
-        res = (
+    def get_users_by_round(self, round_no=None, round_id=None):
+        query = (
             User.select(User, Player.user_id, Game.game)
             .join(Player, on=(Player.user_id == User.user_id))
             .join(Game, on=(Game.game_id == Player.game_id))
-            .filter(Game.game == round_no)
         )
-        return list(res)
+        if round_no:
+            query = query.filter(Game.game == round_no)
+        elif round_id:
+            query = query.filter(Game.game_id == round_id)
+        return list(query)
 
     def get_user_id(self, username):
         user = self.get_user(username)
@@ -131,7 +137,7 @@ class WordleDb:
 
     def get_or_create_player_round(self, user_id, game_id):
         try:
-            return Player.get(user_id=user_id, game_id=game_id)
+            return Player.get(Player.user_id == user_id, Player.game_id == game_id)
         except peewee.DoesNotExist:
             return Player.create(user_id=user_id, game_id=game_id)
 

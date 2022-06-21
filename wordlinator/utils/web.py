@@ -9,16 +9,24 @@ def _date_range(game):
     return f"{game.start_date} to {game.end_date}"
 
 
-def get_date_dropdown(dates):
+def get_date_dropdown(dates, wordle_day=None):
     options = [
         {"label": f"Round {d.game} ({_date_range(d)})", "value": d.game_id}
         for d in dates
     ]
 
+    value = dates[-1].game_id
+    if wordle_day:
+        if wordle_day.golf_hole:
+            match = [d for d in dates if d.game == wordle_day.golf_hole.game_no]
+        else:
+            match = [d for d in dates[::-1] if d.end_date <= wordle_day.date]
+        value = match[0].game_id
+
     return dcc.Dropdown(
         id="round-selector-dropdown",
         options=options,
-        value=dates[-1].game_id,
+        value=value,
         clearable=False,
     )
 

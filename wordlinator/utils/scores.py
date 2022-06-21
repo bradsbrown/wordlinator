@@ -153,9 +153,13 @@ class UserRow(ScoreRow):
 
 
 class ScoreMatrix(ScoreContainer):
+    def __init__(self, *args, usernames=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.usernames = usernames or []
+
     def by_user(self, usernames: typing.List[str] = []):
         res = self.dict_by("user_id.username", UserRow)
-        for username in usernames:
+        for username in usernames or self.usernames:
             if username not in res:
                 res[username] = UserRow([], username)
         return res

@@ -69,9 +69,16 @@ def _scores_from_db(round_id, ttl_hash=None):
     return db.WordleDb().get_scores(round_id=round_id)
 
 
+@functools.lru_cache()
+def _players_from_db(round_id, ttl_hash=None):
+    return db.WordleDb().get_users_by_round(round_id=round_id)
+
+
 def scores_from_db(round_id):
+    users = _players_from_db(round_id)
+    usernames = [u.username for u in users]
     return wordlinator.utils.scores.ScoreMatrix(
-        _scores_from_db(round_id, get_ttl_hash())
+        _scores_from_db(round_id, get_ttl_hash()), usernames=usernames
     )
 
 
@@ -257,7 +264,9 @@ app.layout = dash.html.Div(
     children=[
         dash.html.H1("#WordleGolf", style={"textAlign": "center"}, id="title"),
         dash.html.Div(
-            wordlinator.utils.web.get_date_dropdown(games_from_db()),
+            wordlinator.utils.web.get_date_dropdown(
+                games_from_db(), wordle_day=wordle_today()
+            ),
             id="round-selector",
             style={"maxWidth": "300px"},
         ),
