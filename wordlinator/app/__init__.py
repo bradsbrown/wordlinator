@@ -270,9 +270,40 @@ def copy_users():
     wordlinator.db.pg.WordleDb().copy_players_from_round(args.from_round, args.to_round)
 
 
+async def pull_gsheets_users(round_no):
+    db = wordlinator.db.pg.WordleDb()
+    db_users = db.get_users_by_round(round_no=round_no)
+
+    round = db.get_or_create_round(round_no)
+    wordle_day = wordlinator.utils.WordleDay.from_date(round.end_date)
+
+    sheets = wordlinator.sheets.SheetsClient(wordle_day=wordle_day)
+    sheets_users = sheets.get_users()
+
+    for user in sheets_users:
+        db_match = [u for u in db_users if u.username == user]
+        if not db_match:
+            rich.print(f"[yellow]Adding {user} to Round {round_no}")
+            await add_user(user, games=[round_no])
+
+    for user in db_users:
+        if user.username not in sheets_users:
+            rich.print(f"[yellow]Removing {user.username} from Round {round_no}")
+            db.remove_user_from_round(user.username, round_no)
+
+
+def sync_gsheet_users():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("round_no", help="The round to sync.")
+    args = parser.parse_args()
+    asyncio.run(pull_gsheets_users(args.round_no))
+
+
 def sync_add_user():
     args = _add_user_args()
-    asyncio.run(add_user(args))
+    asyncio.run(
+        add_user(args.username, args.games, args.unenroll_games, args.check_twitter)
+    )
 
 
 def sync_main():

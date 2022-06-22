@@ -39,6 +39,7 @@ db-load = "wordlinator.app:load_db_scores"
 add-user = "wordlinator.app:sync_add_user"
 create-round = "wordlinator.app:create_round"
 copy-users = "wordlinator.app:copy_users"
+gs-user-sync = "wordlinator.app:sync_gsheet_users"
 
 [tool.mypy]
 ignore_missing_imports = true

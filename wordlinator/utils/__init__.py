@@ -5,7 +5,11 @@ import typing
 
 WORDLE_DAY_ZERO = datetime.date(2021, 6, 19)
 
-WORDLE_GOLF_ROUND_DATES = [datetime.date(2022, 5, 9), datetime.date(2022, 5, 31)]
+WORDLE_GOLF_ROUND_DATES = [
+    datetime.date(2022, 5, 9),
+    datetime.date(2022, 5, 31),
+    datetime.date(2022, 6, 24),
+]
 
 
 def date_from_string(datestr: str):
