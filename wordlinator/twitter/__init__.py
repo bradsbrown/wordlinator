@@ -17,7 +17,15 @@ import wordlinator.utils
 
 BASE_URL = "https://api.twitter.com/2"
 WORDLE_RE = re.compile(
-    r"Wordle(\w+)? (?P<number>\d+) (?P<score>[X\d])/6", re.IGNORECASE
+    r"""
+    Wordle                      # Line Leader
+    (\w+)?                      # etta factor (catches ...Golf, etc)
+    \s                          # single space
+    (?P<number>\d+)             # game number
+    \s                          # single space
+    (?P<score>[X\d])/6          # score out of 6
+    """,
+    re.IGNORECASE | re.VERBOSE,
 )
 TOKEN = os.getenv("TWITTER_TOKEN")
 
