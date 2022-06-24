@@ -233,7 +233,7 @@ class WordleDb:
     def bulk_insert_scores(self, scores: typing.List[typing.Dict]):
         with db.atomic() as txn:
             for batch in peewee.chunked(scores, 50):
-                Score.insert_many(batch).execute(txn)
+                Score.insert_many(batch).execute()
 
     def bulk_update_scores(self, scores: typing.List[Score]):
         with db.atomic():
