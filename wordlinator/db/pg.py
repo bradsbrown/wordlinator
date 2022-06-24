@@ -4,8 +4,6 @@ import typing
 
 import peewee
 
-import wordlinator.utils
-
 db = peewee.PostgresqlDatabase(
     os.getenv("DB_NAME", "wordlegolf"),
     user=os.getenv("DB_USER", "wordlegolf"),
@@ -117,10 +115,11 @@ class WordleDb:
             try:
                 return Game.get(Game.game == round_no)
             except peewee.DoesNotExist:
-                start_date = (
-                    start_date
-                    or wordlinator.utils.WORDLE_GOLF_ROUND_DATES[round_no - 1]
-                )
+                if not start_date:
+                    raise ValueError(
+                        f"Round {round_no} does not exist, "
+                        "and no start_date provide to create it"
+                    )
                 return Game.create(game=round_no, start_date=start_date)
 
     def get_or_create_hole(self, round_no, hole_no):

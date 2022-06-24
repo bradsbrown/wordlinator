@@ -3,13 +3,11 @@ import dataclasses
 import datetime
 import typing
 
+import wordlinator.db.pg
+
 WORDLE_DAY_ZERO = datetime.date(2021, 6, 19)
 
-WORDLE_GOLF_ROUND_DATES = [
-    datetime.date(2022, 5, 9),
-    datetime.date(2022, 5, 31),
-    datetime.date(2022, 6, 24),
-]
+WORDLE_GOLF_ROUNDS = wordlinator.db.pg.WordleDb().get_rounds()
 
 
 def date_from_string(datestr: str):
@@ -27,10 +25,10 @@ class GolfHole:
 
     @classmethod
     def from_date(cls, date: datetime.date):
-        for game_no, start_date in enumerate(WORDLE_GOLF_ROUND_DATES, start=1):
-            hole_value = (date - start_date).days + 1
-            if 1 <= hole_value <= 18:
-                return cls(game_no=game_no, hole_no=hole_value)
+        for round in WORDLE_GOLF_ROUNDS:
+            if round.start_date <= date <= round.end_date:
+                hole_no = (date - round.start_date).days + 1
+                return cls(game_no=round.game, hole_no=hole_no)
         return None
 
 
