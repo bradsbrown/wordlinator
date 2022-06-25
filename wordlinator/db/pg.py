@@ -240,25 +240,24 @@ class WordleDb:
                 score.save()
 
     def get_users_without_score(self, round_no, hole_no, tweetable=True):
-        with db.atomic() as txn:
-            hole = self.get_or_create_hole(round_no, hole_no)
-            # Find users who *have* played in this round,
-            # but have no score on the current hole
-            query_str = """SELECT u.username, player.game_id
-            FROM user_tbl u
-            JOIN player ON player.user_id = u.user_id
-            WHERE (
-                player.game_id = {}
-            ) AND NOT EXISTS (
-                SELECT FROM score WHERE score.user_id = u.user_id AND score.hole_id = {}
-            )
-            """.format(
-                hole.game_id, hole.hole_id
-            )
+        hole = self.get_or_create_hole(round_no, hole_no)
+        # Find users who *have* played in this round,
+        # but have no score on the current hole
+        query_str = """SELECT u.username, player.game_id
+        FROM user_tbl u
+        JOIN player ON player.user_id = u.user_id
+        WHERE (
+            player.game_id = {}
+        ) AND NOT EXISTS (
+            SELECT FROM score WHERE score.user_id = u.user_id AND score.hole_id = {}
+        )
+        """.format(
+            hole.game_id, hole.hole_id
+        )
 
-            if tweetable:
-                # Restrict to users who post scores on twitter
-                query_str += " AND u.check_twitter = true"
+        if tweetable:
+            # Restrict to users who post scores on twitter
+            query_str += " AND u.check_twitter = true"
 
-            res = txn.execute_sql(query_str)
-            return [r[0] for r in res]
+        res = db.execute_sql(query_str)
+        return [r[0] for r in res]
