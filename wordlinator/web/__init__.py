@@ -351,14 +351,6 @@ def render_tab(tab, round_id):
                             line_race_graph(round_id), id="leaderboard-race"
                         ),
                     ),
-                ]
-            ),
-            dash.html.Div(
-                [
-                    dash.html.H2(
-                        f"Leaderboard - Top {LEADERBOARD_COUNT}",
-                        style={"textAlign": "center"},
-                    ),
                     dash.dcc.Loading(
                         id="leaderboard-loading",
                         children=dash.html.Div(
