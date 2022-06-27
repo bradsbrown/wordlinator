@@ -1,4 +1,5 @@
 import collections
+import itertools
 import typing
 
 import wordlinator.db.pg
@@ -75,6 +76,15 @@ class UserRow(ScoreRow):
     @property
     def golf_score(self) -> int:
         return self.total - (self.count * 4)
+
+    @property
+    def progressive_score_list(self) -> typing.List[int]:
+        score_progress = list(
+            itertools.accumulate(
+                self.sorted_scores(), func=lambda t, e: t + (e.score - 4), initial=0
+            )
+        )[1:]
+        return score_progress
 
     def sorted_scores(self):
         yield from sorted(self._scores, key=lambda s: s.hole_id.hole)
@@ -189,3 +199,19 @@ class ScoreMatrix(ScoreContainer):
     def user_rows(self, wordle_day):
         hole_no = wordle_day.golf_hole.hole_no
         return [u.user_row(hole_no=hole_no) for u in self.by_user().values()]
+
+    def top_by_day(self):
+        user_dict = {u: r.progressive_score_list for u, r in self.by_user().items()}
+        days = max(map(len, user_dict.values()))
+
+        rankings = collections.defaultdict(list)
+        for day_idx in range(days):
+            day_scores = {
+                u: v[day_idx] for u, v in user_dict.items() if len(v) >= day_idx + 1
+            }
+            tops = [(u, v) for u, v in sorted(day_scores.items(), key=lambda t: t[1])][
+                :20
+            ]
+            for (user, score) in tops:
+                rankings[user].append((day_idx + 1, score))
+        return rankings

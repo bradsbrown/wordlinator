@@ -1,3 +1,4 @@
+import collections
 import functools
 import os
 import pathlib
@@ -16,7 +17,7 @@ import wordlinator.utils
 import wordlinator.utils.scores
 import wordlinator.utils.web
 
-TTL_TIME = 30 if os.getenv("DEBUG") else 600
+TTL_TIME = 30 if os.getenv("DEBUG") else 90
 LEADERBOARD_COUNT = 20
 
 ###################
@@ -251,6 +252,38 @@ def get_line_graph(round_id):
     return dash.dcc.Graph(figure=figure)
 
 
+#####################
+# Line Race Helpers #
+#####################
+
+
+def line_race_graph(round_id):
+    score_matrix = scores_from_db(round_id)
+    tops_by_day = score_matrix.top_by_day()
+
+    figure = plotly.graph_objs.Figure()
+    figure.update_yaxes(autorange="reversed")
+    figure.update_xaxes(tickmode="linear", tick0=1, dtick=1)
+    annotation_names = collections.defaultdict(list)
+    for name, entries in tops_by_day.items():
+        figure.add_trace(
+            plotly.graph_objs.Scatter(
+                name=name,
+                mode="lines+markers",
+                x=[e[0] for e in entries],
+                y=[e[1] for e in entries],
+            )
+        )
+        annotation_names[entries[-1]].append(name)
+
+    annotations = [
+        {"x": k[0], "y": k[1], "text": ", ".join(v)}
+        for k, v in annotation_names.items()
+    ]
+    figure.update_layout(annotations=annotations)
+    return dash.dcc.Graph(figure=figure)
+
+
 #############
 # App Setup #
 #############
@@ -274,6 +307,18 @@ app.layout = dash.html.Div(
                 dash.dcc.Loading(
                     id="leaderboard-loading",
                     children=dash.html.Div("Loading...", id="leaderboard"),
+                ),
+            ]
+        ),
+        dash.html.Div(
+            [
+                dash.html.H2(
+                    f"Leaderboard - Top {LEADERBOARD_COUNT}",
+                    style={"textAlign": "center"},
+                ),
+                dash.dcc.Loading(
+                    id="leaderboard-race-loading",
+                    children=dash.html.Div("Loading...", id="leaderboard-race"),
                 ),
             ]
         ),
@@ -318,6 +363,18 @@ app.layout = dash.html.Div(
 )
 def get_leaderboard_table(_, round_id):
     return get_leaderboard(round_id)
+
+
+@app.long_callback(
+    output=dash.dependencies.Output("leaderboard-race", "children"),
+    inputs=[
+        dash.dependencies.Input("title", "children"),
+        dash.dependencies.Input("round-selector-dropdown", "value"),
+    ],
+    manager=long_callback_manager,
+)
+def get_leaderboard_race(_, round_id):
+    return line_race_graph(round_id)
 
 
 @app.long_callback(
