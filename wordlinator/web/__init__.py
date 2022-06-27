@@ -274,6 +274,8 @@ def get_line_graph(round_id):
 def line_race_graph(round_id):
     score_matrix = scores_from_db(round_id)
     tops_by_day = score_matrix.top_by_day()
+    round_day = round_wordle_day(round_id)
+    hole_no = round_day.golf_hole.hole_no
 
     figure = plotly.graph_objs.Figure()
     figure.update_yaxes(autorange="reversed")
@@ -288,7 +290,8 @@ def line_race_graph(round_id):
                 y=[e[1] for e in entries],
             )
         )
-        annotation_names[entries[-1]].append(name)
+        if entries[-1][0] == hole_no:
+            annotation_names[entries[-1]].append(name)
 
     annotations = [
         {"x": k[0], "y": k[1], "text": ", ".join(v)}
