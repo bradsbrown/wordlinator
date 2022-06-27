@@ -65,6 +65,16 @@ def wordle_today():
     return _wordle_today(get_ttl_hash())
 
 
+def round_wordle_day(round_id):
+    wt = wordle_today()
+    rounds = games_from_db()
+
+    matching_round = [r for r in rounds if r.game_id == round_id][0]
+    if matching_round.game == wt.golf_hole.game_no:
+        return wt
+    return wordlinator.utils.WordleDay.from_date(matching_round.end_date)
+
+
 @functools.lru_cache(maxsize=3)
 def _scores_from_db(round_id, ttl_hash=None):
     wordle_db = db.WordleDb()
@@ -106,11 +116,12 @@ def get_leaderboard(round_id):
 
 def get_scores(round_id):
     score_matrix = scores_from_db(round_id)
-    table_rows = score_matrix.user_rows(wordle_today())
+    round_day = round_wordle_day(round_id)
+    table_rows = score_matrix.user_rows(round_day)
 
     hole_columns = [
         {"name": f"{i}", "id": f"{i}", "type": "text", "presentation": "markdown"}
-        for i in range(1, wordle_today().golf_hole.hole_no + 1)
+        for i in range(1, round_day.golf_hole.hole_no + 1)
     ]
     columns = [
         {"name": "Name", "id": "Name", "type": "text"},
@@ -191,7 +202,10 @@ def get_daily_stats(round_id):
         {"name": n, "id": n}
         for n in (
             "Score",
-            *[f"{i}" for i in range(1, wordle_today().golf_hole.hole_no + 1)],
+            *[
+                f"{i}"
+                for i in range(1, round_wordle_day(round_id).golf_hole.hole_no + 1)
+            ],
         )
     ]
     return dash.dash_table.DataTable(
