@@ -312,119 +312,96 @@ app.layout = dash.html.Div(
             id="round-selector",
             style={"maxWidth": "300px"},
         ),
-        dash.html.Div(
-            [
-                dash.html.H2(
-                    f"Leaderboard - Top {LEADERBOARD_COUNT}",
-                    style={"textAlign": "center"},
-                ),
-                dash.dcc.Loading(
-                    id="leaderboard-loading",
-                    children=dash.html.Div("Loading...", id="leaderboard"),
-                ),
-            ]
+        dash.dcc.Tabs(
+            id="main-tabs",
+            value="leaderboard",
+            children=[
+                dash.dcc.Tab(label="Leaderboard", value="leaderboard"),
+                dash.dcc.Tab(label="Statistics", value="statistics"),
+                dash.dcc.Tab(label="User Scores", value="user-scores"),
+            ],
         ),
-        dash.html.Div(
-            [
-                dash.html.H2(
-                    f"Leaderboard - Top {LEADERBOARD_COUNT}",
-                    style={"textAlign": "center"},
-                ),
-                dash.dcc.Loading(
-                    id="leaderboard-race-loading",
-                    children=dash.html.Div("Loading...", id="leaderboard-race"),
-                ),
-            ]
-        ),
-        dash.html.Div(
-            [
-                dash.html.H2("User Scores", style={"textAlign": "center"}),
-                dash.dcc.Loading(
-                    id="user-scores-loading",
-                    children=dash.html.Div("Loading...", id="user-scores"),
-                ),
-            ]
-        ),
-        dash.html.Div(
-            [
-                dash.html.H2("Score Graph", style={"textAlign": "center"}),
-                dash.dcc.Loading(
-                    id="stats-graph-loading",
-                    children=dash.html.Div("Loading...", id="stats-graph"),
-                ),
-            ]
-        ),
-        dash.html.Div(
-            [
-                dash.html.H2("Daily Stats", style={"textAlign": "center"}),
-                dash.dcc.Loading(
-                    id="daily-stats-loading",
-                    children=dash.html.Div("Loading...", id="daily-stats"),
-                ),
-            ]
-        ),
+        dash.dcc.Loading(dash.html.Div(id="tab-content"), id="tab-content-loading"),
     ]
 )
 
 
-@app.long_callback(
-    output=dash.dependencies.Output("leaderboard", "children"),
-    inputs=[
-        dash.dependencies.Input("title", "children"),
+@app.callback(
+    dash.dependencies.Output("tab-content", "children"),
+    [
+        dash.dependencies.Input("main-tabs", "value"),
         dash.dependencies.Input("round-selector-dropdown", "value"),
     ],
-    manager=long_callback_manager,
 )
-def get_leaderboard_table(_, round_id):
-    return get_leaderboard(round_id)
-
-
-@app.long_callback(
-    output=dash.dependencies.Output("leaderboard-race", "children"),
-    inputs=[
-        dash.dependencies.Input("title", "children"),
-        dash.dependencies.Input("round-selector-dropdown", "value"),
-    ],
-    manager=long_callback_manager,
-)
-def get_leaderboard_race(_, round_id):
-    return line_race_graph(round_id)
-
-
-@app.long_callback(
-    output=dash.dependencies.Output("user-scores", "children"),
-    inputs=[
-        dash.dependencies.Input("title", "children"),
-        dash.dependencies.Input("round-selector-dropdown", "value"),
-    ],
-    manager=long_callback_manager,
-)
-def get_scores_chart(_, round_id):
-    return get_scores(round_id)
-
-
-@app.long_callback(
-    output=dash.dependencies.Output("daily-stats", "children"),
-    inputs=[
-        dash.dependencies.Input("title", "children"),
-        dash.dependencies.Input("round-selector-dropdown", "value"),
-    ],
-    manager=long_callback_manager,
-)
-def get_stats_chart(_, round_id):
-    return get_daily_stats(round_id)
-
-
-@app.long_callback(
-    output=dash.dependencies.Output("stats-graph", "children"),
-    inputs=[
-        dash.dependencies.Input("title", "children"),
-        dash.dependencies.Input("round-selector-dropdown", "value"),
-    ],
-    manager=long_callback_manager,
-)
-def get_stats_graph(_, round_id):
-    return get_line_graph(round_id)
+def render_tab(tab, round_id):
+    if tab == "leaderboard":
+        return [
+            dash.html.Div(
+                [
+                    dash.html.H2(
+                        f"Leaderboard - Top {LEADERBOARD_COUNT}",
+                        style={"textAlign": "center"},
+                    ),
+                    dash.dcc.Loading(
+                        id="leaderboard-race-loading",
+                        children=dash.html.Div(
+                            line_race_graph(round_id), id="leaderboard-race"
+                        ),
+                    ),
+                ]
+            ),
+            dash.html.Div(
+                [
+                    dash.html.H2(
+                        f"Leaderboard - Top {LEADERBOARD_COUNT}",
+                        style={"textAlign": "center"},
+                    ),
+                    dash.dcc.Loading(
+                        id="leaderboard-loading",
+                        children=dash.html.Div(
+                            get_leaderboard(round_id), id="leaderboard"
+                        ),
+                    ),
+                ]
+            ),
+        ]
+    elif tab == "user-scores":
+        return [
+            dash.html.Div(
+                [
+                    dash.html.H2("User Scores", style={"textAlign": "center"}),
+                    dash.dcc.Loading(
+                        id="user-scores-loading",
+                        children=dash.html.Div(get_scores(round_id), id="user-scores"),
+                    ),
+                ]
+            ),
+        ]
+    elif tab == "statistics":
+        return [
+            dash.html.Div(
+                [
+                    dash.html.H2("Score Graph", style={"textAlign": "center"}),
+                    dash.dcc.Loading(
+                        id="stats-graph-loading",
+                        children=dash.html.Div(
+                            get_line_graph(round_id), id="stats-graph"
+                        ),
+                    ),
+                ]
+            ),
+            dash.html.Div(
+                [
+                    dash.html.H2("Daily Stats", style={"textAlign": "center"}),
+                    dash.dcc.Loading(
+                        id="daily-stats-loading",
+                        children=dash.html.Div(
+                            get_daily_stats(round_id), id="daily-stats"
+                        ),
+                    ),
+                ]
+            ),
+        ]
 
 
 server = app.server
