@@ -85,7 +85,7 @@ def _scores_from_db(round_id, ttl_hash=None):
 
 
 def scores_from_db(round_id):
-    return _scores_from_db(round_id)
+    return _scores_from_db(round_id, get_ttl_hash())
 
 
 #######################
