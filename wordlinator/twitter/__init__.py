@@ -156,6 +156,7 @@ class TwitterClient(httpx.AsyncClient):
             user_id = await self.get_user_twitter_id(username)
             if user_id:
                 self.db.add_user(username, user_id)
+                self.db.add_user_to_round(username, self.wordle_day.golf_hole.game_no)
             return user_id
 
     def _start_timestamp(self):
