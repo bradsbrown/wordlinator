@@ -154,9 +154,12 @@ class UserRow(ScoreRow):
                 )
             else:
                 saved_score = score_match[0]
-                if saved_score.score != score or saved_score.tweet_id != tweet_id:
+                if saved_score.score != score or (
+                    tweet_id and saved_score.tweet_id != tweet_id
+                ):
                     saved_score.score = score
-                    saved_score.tweet_id = tweet_id
+                    if tweet_id:
+                        saved_score.tweet_id = tweet_id
                     results["update"].append(saved_score)
 
         return results

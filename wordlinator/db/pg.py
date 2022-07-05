@@ -216,12 +216,16 @@ class WordleDb:
                 Score.select(
                     Score,
                     Hole.hole,
+                    Hole.hole_id,
+                    Game.game_id,
                     User.username,
+                    User.user_id,
                     Player.game_id,
                 )
                 .join(Player, on=(Score.user_id == Player.user_id))
                 .switch(Score)
                 .join(Hole, on=(Score.hole_id == Hole.hole_id))
+                .join(Game, on=(Hole.game_id == Game.game_id))
                 .switch(Score)
                 .join(User, on=(Score.user_id == User.user_id))
                 .filter(Player.game_id == round.game_id)
@@ -235,9 +239,18 @@ class WordleDb:
                 Score.insert_many(batch).execute()
 
     def bulk_update_scores(self, scores: typing.List[Score]):
-        with db.atomic():
-            for score in scores:
-                score.save()
+        query_str = """UPDATE score
+        SET score = {score}, tweet_id = {tweet_id}
+        WHERE user_id = {user_id} AND game_id = {game_id} AND hole_id = {hole_id}"""
+        for score in scores:
+            query = query_str.format(
+                score=score.score,
+                tweet_id=score.tweet_id or "NULL",
+                user_id=score.user_id.user_id,
+                game_id=score.game_id.game_id,
+                hole_id=score.hole_id.hole_id,
+            )
+            db.execute_sql(query)
 
     def get_users_without_score(self, round_no, hole_no, tweetable=True):
         hole = self.get_or_create_hole(round_no, hole_no)
