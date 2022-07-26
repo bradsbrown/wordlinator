@@ -1,7 +1,9 @@
 import collections
 import functools
+import math
 import os
 import pathlib
+import re
 import time
 
 import dash
@@ -19,6 +21,7 @@ import wordlinator.utils.web
 
 TTL_TIME = 30 if os.getenv("DEBUG") else 90
 LEADERBOARD_COUNT = 20
+VALUE_RE = re.compile(r"\[(?P<value>-?\d+)\]")
 
 ###################
 # Setup Functions #
@@ -26,7 +29,10 @@ LEADERBOARD_COUNT = 20
 
 assets_dir = pathlib.Path(__file__).parent / "assets"
 app = dash.Dash(
-    name="WordleGolf", title="#WordleGolf", assets_folder=str(assets_dir.resolve())
+    name="WordleGolf",
+    title="#WordleGolf",
+    assets_folder=str(assets_dir.resolve()),
+    suppress_callback_exceptions=True,
 )
 
 
@@ -114,10 +120,16 @@ def get_leaderboard(round_id):
 #################
 
 
-def get_scores(round_id):
+def _get_scores(round_id):
     score_matrix = scores_from_db(round_id)
     round_day = round_wordle_day(round_id)
     table_rows = score_matrix.user_rows(round_day)
+    return table_rows
+
+
+def get_scores(round_id):
+    round_day = round_wordle_day(round_id)
+    table_rows = _get_scores(round_id)
 
     hole_columns = [
         {"name": f"{i}", "id": f"{i}", "type": "text", "presentation": "markdown"}
@@ -150,6 +162,7 @@ def get_scores(round_id):
     return dash.dash_table.DataTable(
         table_rows,
         columns,
+        id="user-scores-table",
         style_table={
             "width": "80%",
             "margin": "auto",
@@ -163,7 +176,9 @@ def get_scores(round_id):
         style_data={"width": "10%"},
         style_as_list_view=True,
         style_data_conditional=formatting,
-        sort_action="native",
+        sort_action="custom",
+        sort_mode="single",
+        sort_by=[{"column_id": "Name", "direction": "asc"}],
     )
 
 
@@ -397,6 +412,32 @@ def render_tab(tab, round_id):
                 ]
             ),
         ]
+
+
+@app.callback(
+    dash.dependencies.Output("user-scores-table", "data"),
+    dash.dependencies.Input("user-scores-table", "sort_by"),
+    dash.dependencies.State("user-scores-table", "data"),
+)
+def sort_scores(sort_by, data):
+    if not sort_by:
+        return data
+    sort_by = sort_by[0]
+
+    def _sort_val(entry):
+        col_id = sort_by["column_id"]
+        raw_val = entry.get(col_id)
+        if raw_val is None or raw_val == "":
+            return math.inf
+        if col_id == "Name":
+            return raw_val
+        if isinstance(raw_val, int) or raw_val.isdigit():
+            return int(raw_val)
+        match = VALUE_RE.match(raw_val).groupdict()["value"]
+        return int(match)
+
+    data = sorted(data, key=_sort_val, reverse=sort_by["direction"] == "desc")
+    return data
 
 
 server = app.server
